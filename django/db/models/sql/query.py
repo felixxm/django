@@ -1392,6 +1392,10 @@ class Query:
         conversions (convert 'obj' in fk__id=obj to pk val using the foreign
         key field for example).
         """
+        print('TODO!!!')
+        # expr = self.expression.resolve_expression(query)
+        # func_sql, params = compiler.compile(expr)
+
         joins = [alias]
         # First, generate the path for the names
         path, final_field, targets, rest = self.names_to_path(

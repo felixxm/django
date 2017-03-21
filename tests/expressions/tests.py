@@ -1349,3 +1349,29 @@ class ReprTests(TestCase):
         self.assertEqual(repr(StdDev('a')), "StdDev(F(a), sample=False)")
         self.assertEqual(repr(Sum('a')), "Sum(F(a))")
         self.assertEqual(repr(Variance('a', sample=True)), "Variance(F(a), sample=True)")
+
+
+class LookupOrderByTest(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        delta = datetime.timedelta(0)
+        dates = [
+            datetime.datetime(2016, 4, 21, 12, 15, 30, 747000),
+            datetime.datetime(2015, 3, 22, 12, 15, 30, 747000),
+            datetime.datetime(2017, 3, 21, 12, 15, 30, 747000),
+        ]
+        cls.experiments = []
+        for key, start_date in enumerate(dates):
+            cls.experiments.append(Experiment.objects.create(
+                name='ex%s' % key,
+                assigned=start_date.date(),
+                completed=start_date.date(),
+                estimated_time=delta,
+                start=start_date,
+                end=start_date,
+            ))
+
+    def test_lookup_order_by(self):
+        self.assertEqual(Experiment.objects.order_by('assigned__month')[0].pk, self.experiments[0].pk)
+        self.assertEqual(Experiment.objects.order_by('assigned__day')[0].pk, self.experiments[1].pk)
+        self.assertEqual(Experiment.objects.order_by('assigned__year')[0].pk, self.experiments[2].pk)

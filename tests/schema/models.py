@@ -77,6 +77,7 @@ class BookWithSlug(models.Model):
     title = models.CharField(max_length=100, db_index=True)
     pub_date = models.DateTimeField()
     slug = models.CharField(max_length=20, unique=True)
+    slug_without_index = models.CharField(max_length=20, unique=True, db_index=False)
 
     class Meta:
         apps = new_apps

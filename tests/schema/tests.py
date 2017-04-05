@@ -1702,6 +1702,28 @@ class SchemaTests(TransactionTestCase):
             self.get_indexes(Book._meta.db_table),
         )
 
+    def test_unique_field_index(self):
+        # Create the table
+        with connection.schema_editor() as editor:
+            editor.create_model(Author)
+            editor.create_model(BookWithSlug)
+        # Index shouldn't exist on unique field with explicit db_index=False
+        self.assertNotIn(
+            "slug_without_index",
+            self.get_indexes(BookWithSlug._meta.db_table),
+        )
+        # Alter to add the index
+        old_field = BookWithSlug._meta.get_field("slug_without_index")
+        new_field = CharField(max_length=20, unique=True)
+        new_field.set_attributes_from_name("slug_without_index")
+        with connection.schema_editor() as editor:
+            editor.alter_field(BookWithSlug, old_field, new_field, strict=True)
+        # Index should exist
+        self.assertIn(
+            "slug_without_index",
+            self.get_indexes(BookWithSlug._meta.db_table),
+        )
+
     def test_primary_key(self):
         """
         Tests altering of the primary key

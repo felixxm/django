@@ -1393,14 +1393,13 @@ class Query:
         key field for example).
         """
         print('TODO!!!')
-        # expr = self.expression.resolve_expression(query)
-        # func_sql, params = compiler.compile(expr)
-
         joins = [alias]
         # First, generate the path for the names
-        path, final_field, targets, rest = self.names_to_path(
-            names, opts, allow_many, fail_on_missing=True)
-
+        path, final_field, targets, lookup_parts = self.names_to_path(names, opts, allow_many)
+        print(path, final_field, targets, lookup_parts)
+        if len(lookup_parts) == 1:
+            final_field = self.try_transform(final_field, lookup_parts[0])
+            print(final_field)
         # Then, add the path to the query's joins. Note that we can't trim
         # joins at this stage - we will need the information about join type
         # of the trimmed joins.

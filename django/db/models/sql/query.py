@@ -1033,6 +1033,12 @@ class Query(BaseExpression):
                 not self.select_for_update):
             clone.clear_ordering(True)
         clone.where.resolve_expression(query, *args, **kwargs)
+        # Resolve combined queries.
+        if clone.combinator:
+            clone.combined_queries = tuple(
+                combined_query.resolve_expression(query, *args, **kwargs)
+                for combined_query in clone.combined_queries
+            )
         for key, value in clone.annotations.items():
             resolved = value.resolve_expression(query, *args, **kwargs)
             if hasattr(resolved, 'external_aliases'):

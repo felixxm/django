@@ -12,9 +12,7 @@ from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
 from django.db import connections
 from django.db.backends.base.base import BaseDatabaseWrapper
-from django.db.backends.utils import (
-    CursorDebugWrapper as BaseCursorDebugWrapper,
-)
+from django.db.backends.utils import CursorDebugWrapper as BaseCursorDebugWrapper
 from django.db.utils import DatabaseError as WrappedDatabaseError
 from django.utils.asyncio import async_unsafe
 from django.utils.functional import cached_property
@@ -30,24 +28,27 @@ except ImportError as e:
 
 
 def psycopg2_version():
-    version = psycopg2.__version__.split(' ', 1)[0]
+    version = psycopg2.__version__.split(" ", 1)[0]
     return get_version_tuple(version)
 
 
 PSYCOPG2_VERSION = psycopg2_version()
 
 if PSYCOPG2_VERSION < (2, 5, 4):
-    raise ImproperlyConfigured("psycopg2_version 2.5.4 or newer is required; you have %s" % psycopg2.__version__)
+    raise ImproperlyConfigured(
+        "psycopg2_version 2.5.4 or newer is required; you have %s"
+        % psycopg2.__version__
+    )
 
 
 # Some of these import psycopg2, so import them after checking if it's installed.
-from .client import DatabaseClient                          # NOQA isort:skip
-from .creation import DatabaseCreation                      # NOQA isort:skip
-from .features import DatabaseFeatures                      # NOQA isort:skip
-from .introspection import DatabaseIntrospection            # NOQA isort:skip
-from .operations import DatabaseOperations                  # NOQA isort:skip
-from .schema import DatabaseSchemaEditor                    # NOQA isort:skip
-from .utils import utc_tzinfo_factory                       # NOQA isort:skip
+from .client import DatabaseClient  # NOQA isort:skip
+from .creation import DatabaseCreation  # NOQA isort:skip
+from .features import DatabaseFeatures  # NOQA isort:skip
+from .introspection import DatabaseIntrospection  # NOQA isort:skip
+from .operations import DatabaseOperations  # NOQA isort:skip
+from .schema import DatabaseSchemaEditor  # NOQA isort:skip
+from .utils import utc_tzinfo_factory  # NOQA isort:skip
 
 psycopg2.extensions.register_adapter(SafeString, psycopg2.extensions.QuotedString)
 psycopg2.extras.register_uuid()
@@ -56,67 +57,65 @@ psycopg2.extras.register_uuid()
 # object on load all the time.
 INETARRAY_OID = 1041
 INETARRAY = psycopg2.extensions.new_array_type(
-    (INETARRAY_OID,),
-    'INETARRAY',
-    psycopg2.extensions.UNICODE,
+    (INETARRAY_OID,), "INETARRAY", psycopg2.extensions.UNICODE,
 )
 psycopg2.extensions.register_type(INETARRAY)
 
 
 class DatabaseWrapper(BaseDatabaseWrapper):
-    vendor = 'postgresql'
-    display_name = 'PostgreSQL'
+    vendor = "postgresql"
+    display_name = "PostgreSQL"
     # This dictionary maps Field objects to their associated PostgreSQL column
     # types, as strings. Column-type strings can contain format strings; they'll
     # be interpolated against the values of Field.__dict__ before being output.
     # If a column type is set to None, it won't be included in the output.
     data_types = {
-        'AutoField': 'serial',
-        'BigAutoField': 'bigserial',
-        'BinaryField': 'bytea',
-        'BooleanField': 'boolean',
-        'CharField': 'varchar(%(max_length)s)',
-        'DateField': 'date',
-        'DateTimeField': 'timestamp with time zone',
-        'DecimalField': 'numeric(%(max_digits)s, %(decimal_places)s)',
-        'DurationField': 'interval',
-        'FileField': 'varchar(%(max_length)s)',
-        'FilePathField': 'varchar(%(max_length)s)',
-        'FloatField': 'double precision',
-        'IntegerField': 'integer',
-        'BigIntegerField': 'bigint',
-        'IPAddressField': 'inet',
-        'GenericIPAddressField': 'inet',
-        'NullBooleanField': 'boolean',
-        'OneToOneField': 'integer',
-        'PositiveIntegerField': 'integer',
-        'PositiveSmallIntegerField': 'smallint',
-        'SlugField': 'varchar(%(max_length)s)',
-        'SmallAutoField': 'smallserial',
-        'SmallIntegerField': 'smallint',
-        'TextField': 'text',
-        'TimeField': 'time',
-        'UUIDField': 'uuid',
+        "AutoField": "serial",
+        "BigAutoField": "bigserial",
+        "BinaryField": "bytea",
+        "BooleanField": "boolean",
+        "CharField": "varchar(%(max_length)s)",
+        "DateField": "date",
+        "DateTimeField": "timestamp with time zone",
+        "DecimalField": "numeric(%(max_digits)s, %(decimal_places)s)",
+        "DurationField": "interval",
+        "FileField": "varchar(%(max_length)s)",
+        "FilePathField": "varchar(%(max_length)s)",
+        "FloatField": "double precision",
+        "IntegerField": "integer",
+        "BigIntegerField": "bigint",
+        "IPAddressField": "inet",
+        "GenericIPAddressField": "inet",
+        "NullBooleanField": "boolean",
+        "OneToOneField": "integer",
+        "PositiveIntegerField": "integer",
+        "PositiveSmallIntegerField": "smallint",
+        "SlugField": "varchar(%(max_length)s)",
+        "SmallAutoField": "smallserial",
+        "SmallIntegerField": "smallint",
+        "TextField": "text",
+        "TimeField": "time",
+        "UUIDField": "uuid",
     }
     data_type_check_constraints = {
-        'PositiveIntegerField': '"%(column)s" >= 0',
-        'PositiveSmallIntegerField': '"%(column)s" >= 0',
+        "PositiveIntegerField": '"%(column)s" >= 0',
+        "PositiveSmallIntegerField": '"%(column)s" >= 0',
     }
     operators = {
-        'exact': '= %s',
-        'iexact': '= UPPER(%s)',
-        'contains': 'LIKE %s',
-        'icontains': 'LIKE UPPER(%s)',
-        'regex': '~ %s',
-        'iregex': '~* %s',
-        'gt': '> %s',
-        'gte': '>= %s',
-        'lt': '< %s',
-        'lte': '<= %s',
-        'startswith': 'LIKE %s',
-        'endswith': 'LIKE %s',
-        'istartswith': 'LIKE UPPER(%s)',
-        'iendswith': 'LIKE UPPER(%s)',
+        "exact": "= %s",
+        "iexact": "= UPPER(%s)",
+        "contains": "LIKE %s",
+        "icontains": "LIKE UPPER(%s)",
+        "regex": "~ %s",
+        "iregex": "~* %s",
+        "gt": "> %s",
+        "gte": ">= %s",
+        "lt": "< %s",
+        "lte": "<= %s",
+        "startswith": "LIKE %s",
+        "endswith": "LIKE %s",
+        "istartswith": "LIKE UPPER(%s)",
+        "iendswith": "LIKE UPPER(%s)",
     }
 
     # The patterns below are used to generate SQL pattern lookup clauses when
@@ -127,14 +126,16 @@ class DatabaseWrapper(BaseDatabaseWrapper):
     #
     # Note: we use str.format() here for readability as '%' is used as a wildcard for
     # the LIKE operator.
-    pattern_esc = r"REPLACE(REPLACE(REPLACE({}, E'\\', E'\\\\'), E'%%', E'\\%%'), E'_', E'\\_')"
+    pattern_esc = (
+        r"REPLACE(REPLACE(REPLACE({}, E'\\', E'\\\\'), E'%%', E'\\%%'), E'_', E'\\_')"
+    )
     pattern_ops = {
-        'contains': "LIKE '%%' || {} || '%%'",
-        'icontains': "LIKE '%%' || UPPER({}) || '%%'",
-        'startswith': "LIKE {} || '%%'",
-        'istartswith': "LIKE UPPER({}) || '%%'",
-        'endswith': "LIKE '%%' || {}",
-        'iendswith': "LIKE '%%' || UPPER({})",
+        "contains": "LIKE '%%' || {} || '%%'",
+        "icontains": "LIKE '%%' || UPPER({}) || '%%'",
+        "startswith": "LIKE {} || '%%'",
+        "istartswith": "LIKE UPPER({}) || '%%'",
+        "endswith": "LIKE '%%' || {}",
+        "iendswith": "LIKE '%%' || UPPER({})",
     }
 
     Database = Database
@@ -151,33 +152,35 @@ class DatabaseWrapper(BaseDatabaseWrapper):
     def get_connection_params(self):
         settings_dict = self.settings_dict
         # None may be used to connect to the default 'postgres' db
-        if settings_dict['NAME'] == '':
+        if settings_dict["NAME"] == "":
             raise ImproperlyConfigured(
                 "settings.DATABASES is improperly configured. "
-                "Please supply the NAME value.")
-        if len(settings_dict['NAME'] or '') > self.ops.max_name_length():
+                "Please supply the NAME value."
+            )
+        if len(settings_dict["NAME"] or "") > self.ops.max_name_length():
             raise ImproperlyConfigured(
                 "The database name '%s' (%d characters) is longer than "
                 "PostgreSQL's limit of %d characters. Supply a shorter NAME "
-                "in settings.DATABASES." % (
-                    settings_dict['NAME'],
-                    len(settings_dict['NAME']),
+                "in settings.DATABASES."
+                % (
+                    settings_dict["NAME"],
+                    len(settings_dict["NAME"]),
                     self.ops.max_name_length(),
                 )
             )
         conn_params = {
-            'database': settings_dict['NAME'] or 'postgres',
-            **settings_dict['OPTIONS'],
+            "database": settings_dict["NAME"] or "postgres",
+            **settings_dict["OPTIONS"],
         }
-        conn_params.pop('isolation_level', None)
-        if settings_dict['USER']:
-            conn_params['user'] = settings_dict['USER']
-        if settings_dict['PASSWORD']:
-            conn_params['password'] = settings_dict['PASSWORD']
-        if settings_dict['HOST']:
-            conn_params['host'] = settings_dict['HOST']
-        if settings_dict['PORT']:
-            conn_params['port'] = settings_dict['PORT']
+        conn_params.pop("isolation_level", None)
+        if settings_dict["USER"]:
+            conn_params["user"] = settings_dict["USER"]
+        if settings_dict["PASSWORD"]:
+            conn_params["password"] = settings_dict["PASSWORD"]
+        if settings_dict["HOST"]:
+            conn_params["host"] = settings_dict["HOST"]
+        if settings_dict["PORT"]:
+            conn_params["port"] = settings_dict["PORT"]
         return conn_params
 
     @async_unsafe
@@ -189,9 +192,9 @@ class DatabaseWrapper(BaseDatabaseWrapper):
         #   default when no value is explicitly specified in options.
         # - before calling _set_autocommit() because if autocommit is on, that
         #   will set connection.isolation_level to ISOLATION_LEVEL_AUTOCOMMIT.
-        options = self.settings_dict['OPTIONS']
+        options = self.settings_dict["OPTIONS"]
         try:
-            self.isolation_level = options['isolation_level']
+            self.isolation_level = options["isolation_level"]
         except KeyError:
             self.isolation_level = connection.isolation_level
         else:
@@ -204,7 +207,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):
     def ensure_timezone(self):
         if self.connection is None:
             return False
-        conn_timezone_name = self.connection.get_parameter_status('TimeZone')
+        conn_timezone_name = self.connection.get_parameter_status("TimeZone")
         timezone_name = self.timezone_name
         if timezone_name and conn_timezone_name != timezone_name:
             with self.connection.cursor() as cursor:
@@ -213,7 +216,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):
         return False
 
     def init_connection_state(self):
-        self.connection.set_client_encoding('UTF8')
+        self.connection.set_client_encoding("UTF8")
 
         timezone_changed = self.ensure_timezone()
         if timezone_changed:
@@ -226,7 +229,9 @@ class DatabaseWrapper(BaseDatabaseWrapper):
         if name:
             # In autocommit mode, the cursor will be used outside of a
             # transaction, hence use a holdable cursor.
-            cursor = self.connection.cursor(name, scrollable=False, withhold=self.connection.autocommit)
+            cursor = self.connection.cursor(
+                name, scrollable=False, withhold=self.connection.autocommit
+            )
         else:
             cursor = self.connection.cursor()
         cursor.tzinfo_factory = utc_tzinfo_factory if settings.USE_TZ else None
@@ -241,7 +246,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):
         # For now, it's here so that every use of "threading" is
         # also async-compatible.
         try:
-            if hasattr(asyncio, 'current_task'):
+            if hasattr(asyncio, "current_task"):
                 # Python 3.7 and up
                 current_task = asyncio.current_task()
             else:
@@ -253,10 +258,11 @@ class DatabaseWrapper(BaseDatabaseWrapper):
         if current_task:
             task_ident = str(id(current_task))
         else:
-            task_ident = 'sync'
+            task_ident = "sync"
         # Use that and the thread ident to get a unique name
         return self._cursor(
-            name='_django_curs_%d_%s_%d' % (
+            name="_django_curs_%d_%s_%d"
+            % (
                 # Avoid reusing name in other threads / tasks
                 threading.current_thread().ident,
                 task_ident,
@@ -273,8 +279,8 @@ class DatabaseWrapper(BaseDatabaseWrapper):
         Check constraints by setting them to immediate. Return them to deferred
         afterward.
         """
-        self.cursor().execute('SET CONSTRAINTS ALL IMMEDIATE')
-        self.cursor().execute('SET CONSTRAINTS ALL DEFERRED')
+        self.cursor().execute("SET CONSTRAINTS ALL IMMEDIATE")
+        self.cursor().execute("SET CONSTRAINTS ALL DEFERRED")
 
     def is_usable(self):
         try:
@@ -297,12 +303,18 @@ class DatabaseWrapper(BaseDatabaseWrapper):
                 "database when it's not needed (for example, when running tests). "
                 "Django was unable to create a connection to the 'postgres' database "
                 "and will use the first PostgreSQL database instead.",
-                RuntimeWarning
+                RuntimeWarning,
             )
             for connection in connections.all():
-                if connection.vendor == 'postgresql' and connection.settings_dict['NAME'] != 'postgres':
+                if (
+                    connection.vendor == "postgresql"
+                    and connection.settings_dict["NAME"] != "postgres"
+                ):
                     return self.__class__(
-                        {**self.settings_dict, 'NAME': connection.settings_dict['NAME']},
+                        {
+                            **self.settings_dict,
+                            "NAME": connection.settings_dict["NAME"],
+                        },
                         alias=self.alias,
                     )
         return nodb_connection
@@ -322,5 +334,5 @@ class CursorDebugWrapper(BaseCursorDebugWrapper):
             return self.cursor.copy_expert(sql, file, *args)
 
     def copy_to(self, file, table, *args, **kwargs):
-        with self.debug_sql(sql='COPY %s TO STDOUT' % table):
+        with self.debug_sql(sql="COPY %s TO STDOUT" % table):
             return self.cursor.copy_to(file, table, *args, **kwargs)

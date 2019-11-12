@@ -9,7 +9,8 @@ REQUIRED_PYTHON = (3, 6)
 
 # This check and everything above must remain compatible with Python 2.7.
 if CURRENT_PYTHON < REQUIRED_PYTHON:
-    sys.stderr.write("""
+    sys.stderr.write(
+        """
 ==========================
 Unsupported Python version
 ==========================
@@ -29,7 +30,10 @@ version of Python. If you can't upgrade your pip (or Python), request
 an older version of Django:
 
     $ python -m pip install "django<2"
-""".format(*(REQUIRED_PYTHON + CURRENT_PYTHON)))
+""".format(
+            *(REQUIRED_PYTHON + CURRENT_PYTHON)
+        )
+    )
     sys.exit(1)
 
 
@@ -56,7 +60,8 @@ setup()
 
 
 if overlay_warning:
-    sys.stderr.write("""
+    sys.stderr.write(
+        """
 
 ========
 WARNING!
@@ -73,4 +78,6 @@ should manually remove the
 
 directory and re-install Django.
 
-""" % {"existing_path": existing_path})
+"""
+        % {"existing_path": existing_path}
+    )

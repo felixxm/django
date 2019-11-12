@@ -10,7 +10,6 @@ from .base import Loader as BaseLoader
 
 
 class Loader(BaseLoader):
-
     def __init__(self, engine, dirs=None):
         super().__init__(engine)
         self.dirs = dirs
@@ -40,7 +39,5 @@ class Loader(BaseLoader):
                 continue
 
             yield Origin(
-                name=name,
-                template_name=template_name,
-                loader=self,
+                name=name, template_name=template_name, loader=self,
             )

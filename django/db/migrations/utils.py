@@ -1,7 +1,7 @@
 import datetime
 import re
 
-COMPILED_REGEX_TYPE = type(re.compile(''))
+COMPILED_REGEX_TYPE = type(re.compile(""))
 
 
 class RegexObject:

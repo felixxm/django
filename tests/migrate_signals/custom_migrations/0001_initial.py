@@ -5,9 +5,6 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            "Signal",
-            [
-                ("id", models.AutoField(primary_key=True)),
-            ],
+            "Signal", [("id", models.AutoField(primary_key=True)),],
         ),
     ]

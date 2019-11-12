@@ -7,6 +7,7 @@ class SecurityMiddlewareTest(SimpleTestCase):
     @property
     def middleware(self):
         from django.middleware.security import SecurityMiddleware
+
         return SecurityMiddleware()
 
     @property
@@ -29,8 +30,7 @@ class SecurityMiddlewareTest(SimpleTestCase):
         ret = self.middleware.process_request(request)
         if ret:
             return ret
-        return self.middleware.process_response(
-            request, self.response(*args, **kwargs))
+        return self.middleware.process_response(request, self.response(*args, **kwargs))
 
     request = RequestFactory()
 
@@ -48,7 +48,7 @@ class SecurityMiddlewareTest(SimpleTestCase):
         """
         self.assertEqual(
             self.process_response(secure=True)["Strict-Transport-Security"],
-            'max-age=3600',
+            "max-age=3600",
         )
 
     @override_settings(SECURE_HSTS_SECONDS=3600)
@@ -58,8 +58,8 @@ class SecurityMiddlewareTest(SimpleTestCase):
         already present in the response.
         """
         response = self.process_response(
-            secure=True,
-            headers={"Strict-Transport-Security": "max-age=7200"})
+            secure=True, headers={"Strict-Transport-Security": "max-age=7200"}
+        )
         self.assertEqual(response["Strict-Transport-Security"], "max-age=7200")
 
     @override_settings(SECURE_HSTS_SECONDS=3600)
@@ -68,7 +68,9 @@ class SecurityMiddlewareTest(SimpleTestCase):
         The "Strict-Transport-Security" header is not added to responses going
         over an insecure connection.
         """
-        self.assertNotIn("Strict-Transport-Security", self.process_response(secure=False))
+        self.assertNotIn(
+            "Strict-Transport-Security", self.process_response(secure=False)
+        )
 
     @override_settings(SECURE_HSTS_SECONDS=0)
     def test_sts_off(self):
@@ -76,7 +78,9 @@ class SecurityMiddlewareTest(SimpleTestCase):
         With SECURE_HSTS_SECONDS=0, the middleware does not add a
         "Strict-Transport-Security" header to the response.
         """
-        self.assertNotIn("Strict-Transport-Security", self.process_response(secure=True))
+        self.assertNotIn(
+            "Strict-Transport-Security", self.process_response(secure=True)
+        )
 
     @override_settings(SECURE_HSTS_SECONDS=600, SECURE_HSTS_INCLUDE_SUBDOMAINS=True)
     def test_sts_include_subdomains(self):
@@ -86,7 +90,9 @@ class SecurityMiddlewareTest(SimpleTestCase):
         "includeSubDomains" directive to the response.
         """
         response = self.process_response(secure=True)
-        self.assertEqual(response["Strict-Transport-Security"], "max-age=600; includeSubDomains")
+        self.assertEqual(
+            response["Strict-Transport-Security"], "max-age=600; includeSubDomains"
+        )
 
     @override_settings(SECURE_HSTS_SECONDS=600, SECURE_HSTS_INCLUDE_SUBDOMAINS=False)
     def test_sts_no_include_subdomains(self):
@@ -106,9 +112,15 @@ class SecurityMiddlewareTest(SimpleTestCase):
         directive to the response.
         """
         response = self.process_response(secure=True)
-        self.assertEqual(response["Strict-Transport-Security"], "max-age=10886400; preload")
+        self.assertEqual(
+            response["Strict-Transport-Security"], "max-age=10886400; preload"
+        )
 
-    @override_settings(SECURE_HSTS_SECONDS=10886400, SECURE_HSTS_INCLUDE_SUBDOMAINS=True, SECURE_HSTS_PRELOAD=True)
+    @override_settings(
+        SECURE_HSTS_SECONDS=10886400,
+        SECURE_HSTS_INCLUDE_SUBDOMAINS=True,
+        SECURE_HSTS_PRELOAD=True,
+    )
     def test_sts_subdomains_and_preload(self):
         """
         With SECURE_HSTS_SECONDS non-zero, SECURE_HSTS_INCLUDE_SUBDOMAINS and
@@ -117,7 +129,10 @@ class SecurityMiddlewareTest(SimpleTestCase):
         to the response.
         """
         response = self.process_response(secure=True)
-        self.assertEqual(response["Strict-Transport-Security"], "max-age=10886400; includeSubDomains; preload")
+        self.assertEqual(
+            response["Strict-Transport-Security"],
+            "max-age=10886400; includeSubDomains; preload",
+        )
 
     @override_settings(SECURE_HSTS_SECONDS=10886400, SECURE_HSTS_PRELOAD=False)
     def test_sts_no_preload(self):
@@ -143,7 +158,9 @@ class SecurityMiddlewareTest(SimpleTestCase):
         The middleware will not override an "X-Content-Type-Options" header
         already present in the response.
         """
-        response = self.process_response(secure=True, headers={"X-Content-Type-Options": "foo"})
+        response = self.process_response(
+            secure=True, headers={"X-Content-Type-Options": "foo"}
+        )
         self.assertEqual(response["X-Content-Type-Options"], "foo")
 
     @override_settings(SECURE_CONTENT_TYPE_NOSNIFF=False)
@@ -168,7 +185,9 @@ class SecurityMiddlewareTest(SimpleTestCase):
         The middleware will not override an "X-XSS-Protection" header
         already present in the response.
         """
-        response = self.process_response(secure=True, headers={"X-XSS-Protection": "foo"})
+        response = self.process_response(
+            secure=True, headers={"X-XSS-Protection": "foo"}
+        )
         self.assertEqual(response["X-XSS-Protection"], "foo")
 
     @override_settings(SECURE_BROWSER_XSS_FILTER=False)
@@ -229,7 +248,7 @@ class SecurityMiddlewareTest(SimpleTestCase):
         With SECURE_REFERRER_POLICY set to None, the middleware does not add a
         "Referrer-Policy" header to the response.
         """
-        self.assertNotIn('Referrer-Policy', self.process_response())
+        self.assertNotIn("Referrer-Policy", self.process_response())
 
     def test_referrer_policy_on(self):
         """
@@ -237,21 +256,23 @@ class SecurityMiddlewareTest(SimpleTestCase):
         "Referrer-Policy" header to the response.
         """
         tests = (
-            ('strict-origin', 'strict-origin'),
-            ('strict-origin,origin', 'strict-origin,origin'),
-            ('strict-origin, origin', 'strict-origin,origin'),
-            (['strict-origin', 'origin'], 'strict-origin,origin'),
-            (('strict-origin', 'origin'), 'strict-origin,origin'),
+            ("strict-origin", "strict-origin"),
+            ("strict-origin,origin", "strict-origin,origin"),
+            ("strict-origin, origin", "strict-origin,origin"),
+            (["strict-origin", "origin"], "strict-origin,origin"),
+            (("strict-origin", "origin"), "strict-origin,origin"),
         )
         for value, expected in tests:
-            with self.subTest(value=value), override_settings(SECURE_REFERRER_POLICY=value):
-                self.assertEqual(self.process_response()['Referrer-Policy'], expected)
+            with self.subTest(value=value), override_settings(
+                SECURE_REFERRER_POLICY=value
+            ):
+                self.assertEqual(self.process_response()["Referrer-Policy"], expected)
 
-    @override_settings(SECURE_REFERRER_POLICY='strict-origin')
+    @override_settings(SECURE_REFERRER_POLICY="strict-origin")
     def test_referrer_policy_already_present(self):
         """
         The middleware will not override a "Referrer-Policy" header already
         present in the response.
         """
-        response = self.process_response(headers={'Referrer-Policy': 'unsafe-url'})
-        self.assertEqual(response['Referrer-Policy'], 'unsafe-url')
+        response = self.process_response(headers={"Referrer-Policy": "unsafe-url"})
+        self.assertEqual(response["Referrer-Policy"], "unsafe-url")

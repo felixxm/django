@@ -4,8 +4,14 @@ from django.db import migrations
 
 try:
     from django.contrib.postgres.operations import (
-        BloomExtension, BtreeGinExtension, BtreeGistExtension, CITextExtension,
-        CreateExtension, CryptoExtension, HStoreExtension, TrigramExtension,
+        BloomExtension,
+        BtreeGinExtension,
+        BtreeGistExtension,
+        CITextExtension,
+        CreateExtension,
+        CryptoExtension,
+        HStoreExtension,
+        TrigramExtension,
         UnaccentExtension,
     )
 except ImportError:
@@ -29,7 +35,7 @@ class Migration(migrations.Migration):
         CITextExtension(),
         # Ensure CreateExtension quotes extension names by creating one with a
         # dash in its name.
-        CreateExtension('uuid-ossp'),
+        CreateExtension("uuid-ossp"),
         CryptoExtension(),
         HStoreExtension(),
         TrigramExtension(),

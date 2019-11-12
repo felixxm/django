@@ -24,12 +24,9 @@ class Migration(migrations.Migration):
             ],
         ),
         migrations.AddField(
-            model_name='tribble',
-            name='bool',
-            field=models.BooleanField(default=False),
+            model_name="tribble", name="bool", field=models.BooleanField(default=False),
         ),
         migrations.AlterUniqueTogether(
-            name='author',
-            unique_together={('name', 'slug')},
+            name="author", unique_together={("name", "slug")},
         ),
     ]

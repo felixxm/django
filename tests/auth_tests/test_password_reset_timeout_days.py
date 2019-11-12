@@ -3,7 +3,9 @@ from datetime import datetime, timedelta
 from types import ModuleType
 
 from django.conf import (
-    PASSWORD_RESET_TIMEOUT_DAYS_DEPRECATED_MSG, Settings, settings,
+    PASSWORD_RESET_TIMEOUT_DAYS_DEPRECATED_MSG,
+    Settings,
+    settings,
 )
 from django.contrib.auth.models import User
 from django.contrib.auth.tokens import PasswordResetTokenGenerator
@@ -27,18 +29,24 @@ class DeprecationTests(TestCase):
             def _now(self):
                 return self._now_val
 
-        user = User.objects.create_user('tokentestuser', 'test2@example.com', 'testpw')
+        user = User.objects.create_user("tokentestuser", "test2@example.com", "testpw")
         p0 = PasswordResetTokenGenerator()
         tk1 = p0.make_token(user)
         p1 = Mocked(datetime.now() + timedelta(settings.PASSWORD_RESET_TIMEOUT_DAYS))
         self.assertTrue(p1.check_token(user, tk1))
-        p2 = Mocked(datetime.now() + timedelta(settings.PASSWORD_RESET_TIMEOUT_DAYS + 1))
+        p2 = Mocked(
+            datetime.now() + timedelta(settings.PASSWORD_RESET_TIMEOUT_DAYS + 1)
+        )
         self.assertFalse(p2.check_token(user, tk1))
         with self.settings(PASSWORD_RESET_TIMEOUT_DAYS=1):
             self.assertEqual(settings.PASSWORD_RESET_TIMEOUT, 60 * 60 * 24)
-            p3 = Mocked(datetime.now() + timedelta(settings.PASSWORD_RESET_TIMEOUT_DAYS))
+            p3 = Mocked(
+                datetime.now() + timedelta(settings.PASSWORD_RESET_TIMEOUT_DAYS)
+            )
             self.assertTrue(p3.check_token(user, tk1))
-            p4 = Mocked(datetime.now() + timedelta(settings.PASSWORD_RESET_TIMEOUT_DAYS + 1))
+            p4 = Mocked(
+                datetime.now() + timedelta(settings.PASSWORD_RESET_TIMEOUT_DAYS + 1)
+            )
             self.assertFalse(p4.check_token(user, tk1))
 
     def test_override_settings_warning(self):
@@ -47,15 +55,15 @@ class DeprecationTests(TestCase):
                 pass
 
     def test_settings_init_warning(self):
-        settings_module = ModuleType('fake_settings_module')
-        settings_module.SECRET_KEY = 'foo'
+        settings_module = ModuleType("fake_settings_module")
+        settings_module.SECRET_KEY = "foo"
         settings_module.PASSWORD_RESET_TIMEOUT_DAYS = 2
-        sys.modules['fake_settings_module'] = settings_module
+        sys.modules["fake_settings_module"] = settings_module
         try:
             with self.assertRaisesMessage(RemovedInDjango40Warning, self.msg):
-                Settings('fake_settings_module')
+                Settings("fake_settings_module")
         finally:
-            del sys.modules['fake_settings_module']
+            del sys.modules["fake_settings_module"]
 
     def test_access_warning(self):
         with self.assertRaisesMessage(RemovedInDjango40Warning, self.msg):
@@ -73,16 +81,16 @@ class DeprecationTests(TestCase):
 
     def test_use_both_settings_init_error(self):
         msg = (
-            'PASSWORD_RESET_TIMEOUT_DAYS/PASSWORD_RESET_TIMEOUT are '
-            'mutually exclusive.'
+            "PASSWORD_RESET_TIMEOUT_DAYS/PASSWORD_RESET_TIMEOUT are "
+            "mutually exclusive."
         )
-        settings_module = ModuleType('fake_settings_module')
-        settings_module.SECRET_KEY = 'foo'
+        settings_module = ModuleType("fake_settings_module")
+        settings_module.SECRET_KEY = "foo"
         settings_module.PASSWORD_RESET_TIMEOUT_DAYS = 2
         settings_module.PASSWORD_RESET_TIMEOUT = 2000
-        sys.modules['fake_settings_module'] = settings_module
+        sys.modules["fake_settings_module"] = settings_module
         try:
             with self.assertRaisesMessage(ImproperlyConfigured, msg):
-                Settings('fake_settings_module')
+                Settings("fake_settings_module")
         finally:
-            del sys.modules['fake_settings_module']
+            del sys.modules["fake_settings_module"]

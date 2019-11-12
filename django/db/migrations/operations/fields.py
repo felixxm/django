@@ -4,7 +4,9 @@ from django.utils.functional import cached_property
 
 from .base import Operation
 from .utils import (
-    ModelTuple, field_references_model, is_referenced_by_foreign_key,
+    ModelTuple,
+    field_references_model,
+    is_referenced_by_foreign_key,
 )
 
 
@@ -26,7 +28,10 @@ class FieldOperation(Operation):
         return self.model_name_lower == operation.model_name_lower
 
     def is_same_field_operation(self, operation):
-        return self.is_same_model_operation(operation) and self.name_lower == operation.name_lower
+        return (
+            self.is_same_model_operation(operation)
+            and self.name_lower == operation.name_lower
+        )
 
     def references_model(self, name, app_label=None):
         name_lower = name.lower()
@@ -42,29 +47,39 @@ class FieldOperation(Operation):
         if model_name_lower == self.model_name_lower:
             if name == self.name:
                 return True
-            elif self.field and hasattr(self.field, 'from_fields') and name in self.field.from_fields:
+            elif (
+                self.field
+                and hasattr(self.field, "from_fields")
+                and name in self.field.from_fields
+            ):
                 return True
         # Check if this operation remotely references the field.
         if self.field:
             model_tuple = ModelTuple(app_label, model_name_lower)
             remote_field = self.field.remote_field
             if remote_field:
-                if (ModelTuple.from_model(remote_field.model) == model_tuple and
-                        (not hasattr(self.field, 'to_fields') or
-                            name in self.field.to_fields or None in self.field.to_fields)):
+                if ModelTuple.from_model(remote_field.model) == model_tuple and (
+                    not hasattr(self.field, "to_fields")
+                    or name in self.field.to_fields
+                    or None in self.field.to_fields
+                ):
                     return True
-                through = getattr(remote_field, 'through', None)
-                if (through and ModelTuple.from_model(through) == model_tuple and
-                        (getattr(remote_field, 'through_fields', None) is None or
-                            name in remote_field.through_fields)):
+                through = getattr(remote_field, "through", None)
+                if (
+                    through
+                    and ModelTuple.from_model(through) == model_tuple
+                    and (
+                        getattr(remote_field, "through_fields", None) is None
+                        or name in remote_field.through_fields
+                    )
+                ):
                     return True
         return False
 
     def reduce(self, operation, app_label=None):
-        return (
-            super().reduce(operation, app_label=app_label) or
-            not operation.references_field(self.model_name, self.name, app_label)
-        )
+        return super().reduce(
+            operation, app_label=app_label
+        ) or not operation.references_field(self.model_name, self.name, app_label)
 
 
 class AddField(FieldOperation):
@@ -76,17 +91,13 @@ class AddField(FieldOperation):
 
     def deconstruct(self):
         kwargs = {
-            'model_name': self.model_name,
-            'name': self.name,
-            'field': self.field,
+            "model_name": self.model_name,
+            "name": self.name,
+            "field": self.field,
         }
         if self.preserve_default is not True:
-            kwargs['preserve_default'] = self.preserve_default
-        return (
-            self.__class__.__name__,
-            [],
-            kwargs
-        )
+            kwargs["preserve_default"] = self.preserve_default
+        return (self.__class__.__name__, [], kwargs)
 
     def state_forwards(self, app_label, state):
         # If preserve default is off, don't use the default for future state
@@ -108,8 +119,7 @@ class AddField(FieldOperation):
             if not self.preserve_default:
                 field.default = self.field.default
             schema_editor.add_field(
-                from_model,
-                field,
+                from_model, field,
             )
             if not self.preserve_default:
                 field.default = NOT_PROVIDED
@@ -117,13 +127,17 @@ class AddField(FieldOperation):
     def database_backwards(self, app_label, schema_editor, from_state, to_state):
         from_model = from_state.apps.get_model(app_label, self.model_name)
         if self.allow_migrate_model(schema_editor.connection.alias, from_model):
-            schema_editor.remove_field(from_model, from_model._meta.get_field(self.name))
+            schema_editor.remove_field(
+                from_model, from_model._meta.get_field(self.name)
+            )
 
     def describe(self):
         return "Add field %s to %s" % (self.name, self.model_name)
 
     def reduce(self, operation, app_label=None):
-        if isinstance(operation, FieldOperation) and self.is_same_field_operation(operation):
+        if isinstance(operation, FieldOperation) and self.is_same_field_operation(
+            operation
+        ):
             if isinstance(operation, AlterField):
                 return [
                     AddField(
@@ -150,14 +164,10 @@ class RemoveField(FieldOperation):
 
     def deconstruct(self):
         kwargs = {
-            'model_name': self.model_name,
-            'name': self.name,
+            "model_name": self.model_name,
+            "name": self.name,
         }
-        return (
-            self.__class__.__name__,
-            [],
-            kwargs
-        )
+        return (self.__class__.__name__, [], kwargs)
 
     def state_forwards(self, app_label, state):
         new_fields = []
@@ -175,7 +185,9 @@ class RemoveField(FieldOperation):
     def database_forwards(self, app_label, schema_editor, from_state, to_state):
         from_model = from_state.apps.get_model(app_label, self.model_name)
         if self.allow_migrate_model(schema_editor.connection.alias, from_model):
-            schema_editor.remove_field(from_model, from_model._meta.get_field(self.name))
+            schema_editor.remove_field(
+                from_model, from_model._meta.get_field(self.name)
+            )
 
     def database_backwards(self, app_label, schema_editor, from_state, to_state):
         to_model = to_state.apps.get_model(app_label, self.model_name)
@@ -188,7 +200,11 @@ class RemoveField(FieldOperation):
 
     def reduce(self, operation, app_label=None):
         from .models import DeleteModel
-        if isinstance(operation, DeleteModel) and operation.name_lower == self.model_name_lower:
+
+        if (
+            isinstance(operation, DeleteModel)
+            and operation.name_lower == self.model_name_lower
+        ):
             return [operation]
         return super().reduce(operation, app_label=app_label)
 
@@ -205,17 +221,13 @@ class AlterField(FieldOperation):
 
     def deconstruct(self):
         kwargs = {
-            'model_name': self.model_name,
-            'name': self.name,
-            'field': self.field,
+            "model_name": self.model_name,
+            "name": self.name,
+            "field": self.field,
         }
         if self.preserve_default is not True:
-            kwargs['preserve_default'] = self.preserve_default
-        return (
-            self.__class__.__name__,
-            [],
-            kwargs
-        )
+            kwargs["preserve_default"] = self.preserve_default
+        return (self.__class__.__name__, [], kwargs)
 
     def state_forwards(self, app_label, state):
         if not self.preserve_default:
@@ -225,16 +237,14 @@ class AlterField(FieldOperation):
             field = self.field
         state.models[app_label, self.model_name_lower].fields = [
             (n, field if n == self.name else f)
-            for n, f in
-            state.models[app_label, self.model_name_lower].fields
+            for n, f in state.models[app_label, self.model_name_lower].fields
         ]
         # TODO: investigate if old relational fields must be reloaded or if it's
         # sufficient if the new field is (#27737).
         # Delay rendering of relationships if it's not a relational field and
         # not referenced by a foreign key.
-        delay = (
-            not field.is_relation and
-            not is_referenced_by_foreign_key(state, self.model_name_lower, self.field, self.name)
+        delay = not field.is_relation and not is_referenced_by_foreign_key(
+            state, self.model_name_lower, self.field, self.name
         )
         state.reload_model(app_label, self.model_name_lower, delay=delay)
 
@@ -257,9 +267,13 @@ class AlterField(FieldOperation):
         return "Alter field %s on %s" % (self.name, self.model_name)
 
     def reduce(self, operation, app_label=None):
-        if isinstance(operation, RemoveField) and self.is_same_field_operation(operation):
+        if isinstance(operation, RemoveField) and self.is_same_field_operation(
+            operation
+        ):
             return [operation]
-        elif isinstance(operation, RenameField) and self.is_same_field_operation(operation):
+        elif isinstance(operation, RenameField) and self.is_same_field_operation(
+            operation
+        ):
             return [
                 operation,
                 AlterField(
@@ -289,15 +303,11 @@ class RenameField(FieldOperation):
 
     def deconstruct(self):
         kwargs = {
-            'model_name': self.model_name,
-            'old_name': self.old_name,
-            'new_name': self.new_name,
+            "model_name": self.model_name,
+            "old_name": self.old_name,
+            "new_name": self.new_name,
         }
-        return (
-            self.__class__.__name__,
-            [],
-            kwargs
-        )
+        return (self.__class__.__name__, [], kwargs)
 
     def state_forwards(self, app_label, state):
         model_state = state.models[app_label, self.model_name_lower]
@@ -310,25 +320,32 @@ class RenameField(FieldOperation):
                 fields[index] = (self.new_name, field)
                 found = True
             # Fix from_fields to refer to the new field.
-            from_fields = getattr(field, 'from_fields', None)
+            from_fields = getattr(field, "from_fields", None)
             if from_fields:
-                field.from_fields = tuple([
-                    self.new_name if from_field_name == self.old_name else from_field_name
-                    for from_field_name in from_fields
-                ])
+                field.from_fields = tuple(
+                    [
+                        self.new_name
+                        if from_field_name == self.old_name
+                        else from_field_name
+                        for from_field_name in from_fields
+                    ]
+                )
             # Delay rendering of relationships if it's not a relational
             # field and not referenced by a foreign key.
             delay = delay and (
-                not field.is_relation and
-                not is_referenced_by_foreign_key(state, self.model_name_lower, field, self.name)
+                not field.is_relation
+                and not is_referenced_by_foreign_key(
+                    state, self.model_name_lower, field, self.name
+                )
             )
         if not found:
             raise FieldDoesNotExist(
-                "%s.%s has no field named '%s'" % (app_label, self.model_name, self.old_name)
+                "%s.%s has no field named '%s'"
+                % (app_label, self.model_name, self.old_name)
             )
         # Fix index/unique_together to refer to the new field
         options = model_state.options
-        for option in ('index_together', 'unique_together'):
+        for option in ("index_together", "unique_together"):
             if option in options:
                 options[option] = [
                     [self.new_name if n == self.old_name else n for n in together]
@@ -344,14 +361,18 @@ class RenameField(FieldOperation):
                         remote_field.model, model_app_label, model_name
                     )
                     if remote_model_tuple == model_tuple:
-                        if getattr(remote_field, 'field_name', None) == self.old_name:
+                        if getattr(remote_field, "field_name", None) == self.old_name:
                             remote_field.field_name = self.new_name
-                        to_fields = getattr(field, 'to_fields', None)
+                        to_fields = getattr(field, "to_fields", None)
                         if to_fields:
-                            field.to_fields = tuple([
-                                self.new_name if to_field_name == self.old_name else to_field_name
-                                for to_field_name in to_fields
-                            ])
+                            field.to_fields = tuple(
+                                [
+                                    self.new_name
+                                    if to_field_name == self.old_name
+                                    else to_field_name
+                                    for to_field_name in to_fields
+                                ]
+                            )
         state.reload_model(app_label, self.model_name_lower, delay=delay)
 
     def database_forwards(self, app_label, schema_editor, from_state, to_state):
@@ -375,28 +396,28 @@ class RenameField(FieldOperation):
             )
 
     def describe(self):
-        return "Rename field %s on %s to %s" % (self.old_name, self.model_name, self.new_name)
+        return "Rename field %s on %s to %s" % (
+            self.old_name,
+            self.model_name,
+            self.new_name,
+        )
 
     def references_field(self, model_name, name, app_label=None):
         return self.references_model(model_name) and (
-            name.lower() == self.old_name_lower or
-            name.lower() == self.new_name_lower
+            name.lower() == self.old_name_lower or name.lower() == self.new_name_lower
         )
 
     def reduce(self, operation, app_label=None):
-        if (isinstance(operation, RenameField) and
-                self.is_same_model_operation(operation) and
-                self.new_name_lower == operation.old_name_lower):
+        if (
+            isinstance(operation, RenameField)
+            and self.is_same_model_operation(operation)
+            and self.new_name_lower == operation.old_name_lower
+        ):
             return [
-                RenameField(
-                    self.model_name,
-                    self.old_name,
-                    operation.new_name,
-                ),
+                RenameField(self.model_name, self.old_name, operation.new_name,),
             ]
         # Skip `FieldOperation.reduce` as we want to run `references_field`
         # against self.new_name.
-        return (
-            super(FieldOperation, self).reduce(operation, app_label=app_label) or
-            not operation.references_field(self.model_name, self.new_name, app_label)
-        )
+        return super(FieldOperation, self).reduce(
+            operation, app_label=app_label
+        ) or not operation.references_field(self.model_name, self.new_name, app_label)

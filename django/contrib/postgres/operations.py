@@ -1,5 +1,7 @@
 from django.contrib.postgres.signals import (
-    get_citext_oids, get_hstore_oids, register_type_handlers,
+    get_citext_oids,
+    get_hstore_oids,
+    register_type_handlers,
 )
 from django.db.migrations import AddIndex, RemoveIndex
 from django.db.migrations.operations.base import Operation
@@ -16,9 +18,11 @@ class CreateExtension(Operation):
         pass
 
     def database_forwards(self, app_label, schema_editor, from_state, to_state):
-        if schema_editor.connection.vendor != 'postgresql':
+        if schema_editor.connection.vendor != "postgresql":
             return
-        schema_editor.execute("CREATE EXTENSION IF NOT EXISTS %s" % schema_editor.quote_name(self.name))
+        schema_editor.execute(
+            "CREATE EXTENSION IF NOT EXISTS %s" % schema_editor.quote_name(self.name)
+        )
         # Clear cached, stale oids.
         get_hstore_oids.cache_clear()
         get_citext_oids.cache_clear()
@@ -38,71 +42,63 @@ class CreateExtension(Operation):
 
 
 class BloomExtension(CreateExtension):
-
     def __init__(self):
-        self.name = 'bloom'
+        self.name = "bloom"
 
 
 class BtreeGinExtension(CreateExtension):
-
     def __init__(self):
-        self.name = 'btree_gin'
+        self.name = "btree_gin"
 
 
 class BtreeGistExtension(CreateExtension):
-
     def __init__(self):
-        self.name = 'btree_gist'
+        self.name = "btree_gist"
 
 
 class CITextExtension(CreateExtension):
-
     def __init__(self):
-        self.name = 'citext'
+        self.name = "citext"
 
 
 class CryptoExtension(CreateExtension):
-
     def __init__(self):
-        self.name = 'pgcrypto'
+        self.name = "pgcrypto"
 
 
 class HStoreExtension(CreateExtension):
-
     def __init__(self):
-        self.name = 'hstore'
+        self.name = "hstore"
 
 
 class TrigramExtension(CreateExtension):
-
     def __init__(self):
-        self.name = 'pg_trgm'
+        self.name = "pg_trgm"
 
 
 class UnaccentExtension(CreateExtension):
-
     def __init__(self):
-        self.name = 'unaccent'
+        self.name = "unaccent"
 
 
 class NotInTransactionMixin:
     def _ensure_not_in_transaction(self, schema_editor):
         if schema_editor.connection.in_atomic_block:
             raise NotSupportedError(
-                'The %s operation cannot be executed inside a transaction '
-                '(set atomic = False on the migration).'
-                % self.__class__.__name__
+                "The %s operation cannot be executed inside a transaction "
+                "(set atomic = False on the migration)." % self.__class__.__name__
             )
 
 
 class AddIndexConcurrently(NotInTransactionMixin, AddIndex):
     """Create an index using PostgreSQL's CREATE INDEX CONCURRENTLY syntax."""
+
     atomic = False
 
     def describe(self):
-        return 'Concurrently create index %s on field(s) %s of model %s' % (
+        return "Concurrently create index %s on field(s) %s of model %s" % (
             self.index.name,
-            ', '.join(self.index.fields),
+            ", ".join(self.index.fields),
             self.model_name,
         )
 
@@ -121,10 +117,11 @@ class AddIndexConcurrently(NotInTransactionMixin, AddIndex):
 
 class RemoveIndexConcurrently(NotInTransactionMixin, RemoveIndex):
     """Remove an index using PostgreSQL's DROP INDEX CONCURRENTLY syntax."""
+
     atomic = False
 
     def describe(self):
-        return 'Concurrently remove index %s from %s' % (self.name, self.model_name)
+        return "Concurrently remove index %s from %s" % (self.name, self.model_name)
 
     def database_forwards(self, app_label, schema_editor, from_state, to_state):
         self._ensure_not_in_transaction(schema_editor)

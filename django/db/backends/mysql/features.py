@@ -19,7 +19,7 @@ class DatabaseFeatures(BaseDatabaseFeatures):
     can_introspect_duration_field = False
     can_introspect_small_integer_field = True
     can_introspect_positive_integer_field = True
-    introspected_boolean_field_type = 'IntegerField'
+    introspected_boolean_field_type = "IntegerField"
     supports_index_column_ordering = False
     supports_timezones = False
     requires_explicit_null_ordering_when_grouping = True
@@ -56,18 +56,24 @@ class DatabaseFeatures(BaseDatabaseFeatures):
     def _mysql_storage_engine(self):
         "Internal method used in Django tests. Don't rely on this from your code"
         with self.connection.cursor() as cursor:
-            cursor.execute("SELECT ENGINE FROM INFORMATION_SCHEMA.ENGINES WHERE SUPPORT = 'DEFAULT'")
+            cursor.execute(
+                "SELECT ENGINE FROM INFORMATION_SCHEMA.ENGINES WHERE SUPPORT = 'DEFAULT'"
+            )
             result = cursor.fetchone()
         return result[0]
 
     @cached_property
     def update_can_self_select(self):
-        return self.connection.mysql_is_mariadb and self.connection.mysql_version >= (10, 3, 2)
+        return self.connection.mysql_is_mariadb and self.connection.mysql_version >= (
+            10,
+            3,
+            2,
+        )
 
     @cached_property
     def can_introspect_foreign_keys(self):
         "Confirm support for introspected foreign keys"
-        return self._mysql_storage_engine != 'MyISAM'
+        return self._mysql_storage_engine != "MyISAM"
 
     @cached_property
     def has_zoneinfo_database(self):
@@ -80,7 +86,7 @@ class DatabaseFeatures(BaseDatabaseFeatures):
     @cached_property
     def is_sql_auto_is_null_enabled(self):
         with self.connection.cursor() as cursor:
-            cursor.execute('SELECT @@SQL_AUTO_IS_NULL')
+            cursor.execute("SELECT @@SQL_AUTO_IS_NULL")
             result = cursor.fetchone()
             return result and result[0] == 1
 
@@ -90,7 +96,9 @@ class DatabaseFeatures(BaseDatabaseFeatures):
             return True
         return self.connection.mysql_version >= (8, 0, 2)
 
-    supports_frame_range_fixed_distance = property(operator.attrgetter('supports_over_clause'))
+    supports_frame_range_fixed_distance = property(
+        operator.attrgetter("supports_over_clause")
+    )
 
     @cached_property
     def supports_column_check_constraints(self):
@@ -98,18 +106,27 @@ class DatabaseFeatures(BaseDatabaseFeatures):
             return self.connection.mysql_version >= (10, 2, 1)
         return self.connection.mysql_version >= (8, 0, 16)
 
-    supports_table_check_constraints = property(operator.attrgetter('supports_column_check_constraints'))
+    supports_table_check_constraints = property(
+        operator.attrgetter("supports_column_check_constraints")
+    )
 
     @cached_property
     def can_introspect_check_constraints(self):
         if self.connection.mysql_is_mariadb:
             version = self.connection.mysql_version
-            return (version >= (10, 2, 22) and version < (10, 3)) or version >= (10, 3, 10)
+            return (version >= (10, 2, 22) and version < (10, 3)) or version >= (
+                10,
+                3,
+                10,
+            )
         return self.connection.mysql_version >= (8, 0, 16)
 
     @cached_property
     def has_select_for_update_skip_locked(self):
-        return not self.connection.mysql_is_mariadb and self.connection.mysql_version >= (8, 0, 1)
+        return (
+            not self.connection.mysql_is_mariadb
+            and self.connection.mysql_version >= (8, 0, 1)
+        )
 
     @cached_property
     def has_select_for_update_nowait(self):
@@ -120,19 +137,30 @@ class DatabaseFeatures(BaseDatabaseFeatures):
     @cached_property
     def needs_explain_extended(self):
         # EXTENDED is deprecated (and not required) in MySQL 5.7.
-        return not self.connection.mysql_is_mariadb and self.connection.mysql_version < (5, 7)
+        return (
+            not self.connection.mysql_is_mariadb
+            and self.connection.mysql_version < (5, 7)
+        )
 
     @cached_property
     def supports_explain_analyze(self):
-        return self.connection.mysql_is_mariadb or self.connection.mysql_version >= (8, 0, 18)
+        return self.connection.mysql_is_mariadb or self.connection.mysql_version >= (
+            8,
+            0,
+            18,
+        )
 
     @cached_property
     def supported_explain_formats(self):
         # Alias MySQL's TRADITIONAL to TEXT for consistency with other
         # backends.
-        formats = {'JSON', 'TEXT', 'TRADITIONAL'}
-        if not self.connection.mysql_is_mariadb and self.connection.mysql_version >= (8, 0, 16):
-            formats.add('TREE')
+        formats = {"JSON", "TEXT", "TRADITIONAL"}
+        if not self.connection.mysql_is_mariadb and self.connection.mysql_version >= (
+            8,
+            0,
+            16,
+        ):
+            formats.add("TREE")
         return formats
 
     @cached_property
@@ -140,12 +168,12 @@ class DatabaseFeatures(BaseDatabaseFeatures):
         """
         All storage engines except MyISAM support transactions.
         """
-        return self._mysql_storage_engine != 'MyISAM'
+        return self._mysql_storage_engine != "MyISAM"
 
     @cached_property
     def ignores_table_name_case(self):
         with self.connection.cursor() as cursor:
-            cursor.execute('SELECT @@LOWER_CASE_TABLE_NAMES')
+            cursor.execute("SELECT @@LOWER_CASE_TABLE_NAMES")
             result = cursor.fetchone()
             return result and result[0] != 0
 

@@ -1,6 +1,8 @@
 from .custom_permissions import CustomPermissionsUser
 from .custom_user import (
-    CustomUser, CustomUserWithoutIsActiveField, ExtensionUser,
+    CustomUser,
+    CustomUserWithoutIsActiveField,
+    ExtensionUser,
 )
 from .invalid_models import CustomUserNonUniqueUsername
 from .is_active import IsActiveTestUser1
@@ -12,14 +14,28 @@ from .with_foreign_key import CustomUserWithFK, Email
 from .with_integer_username import IntegerUsernameUser
 from .with_last_login_attr import UserWithDisabledLastLoginField
 from .with_many_to_many import (
-    CustomUserWithM2M, CustomUserWithM2MThrough, Organization,
+    CustomUserWithM2M,
+    CustomUserWithM2MThrough,
+    Organization,
 )
 
 __all__ = (
-    'CustomPermissionsUser', 'CustomUser', 'CustomUserNonUniqueUsername',
-    'CustomUserWithFK', 'CustomUserWithM2M', 'CustomUserWithM2MThrough',
-    'CustomUserWithoutIsActiveField', 'Email', 'ExtensionUser',
-    'IntegerUsernameUser', 'IsActiveTestUser1', 'MinimalUser',
-    'NoPasswordUser', 'Organization', 'Proxy', 'UUIDUser', 'UserProxy',
-    'UserWithDisabledLastLoginField',
+    "CustomPermissionsUser",
+    "CustomUser",
+    "CustomUserNonUniqueUsername",
+    "CustomUserWithFK",
+    "CustomUserWithM2M",
+    "CustomUserWithM2MThrough",
+    "CustomUserWithoutIsActiveField",
+    "Email",
+    "ExtensionUser",
+    "IntegerUsernameUser",
+    "IsActiveTestUser1",
+    "MinimalUser",
+    "NoPasswordUser",
+    "Organization",
+    "Proxy",
+    "UUIDUser",
+    "UserProxy",
+    "UserWithDisabledLastLoginField",
 )

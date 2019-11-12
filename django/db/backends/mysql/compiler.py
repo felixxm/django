@@ -6,7 +6,14 @@ class SQLCompiler(compiler.SQLCompiler):
         qn = compiler.quote_name_unless_alias
         qn2 = self.connection.ops.quote_name
         sql, params = self.as_sql()
-        return '(%s) IN (%s)' % (', '.join('%s.%s' % (qn(alias), qn2(column)) for column in columns), sql), params
+        return (
+            "(%s) IN (%s)"
+            % (
+                ", ".join("%s.%s" % (qn(alias), qn2(column)) for column in columns),
+                sql,
+            ),
+            params,
+        )
 
 
 class SQLInsertCompiler(compiler.SQLInsertCompiler, SQLCompiler):
@@ -23,16 +30,15 @@ class SQLDeleteCompiler(compiler.SQLDeleteCompiler, SQLCompiler):
         # DELETE table FROM table syntax instead to avoid performing the
         # operation in two queries.
         result = [
-            'DELETE %s FROM' % self.quote_name_unless_alias(
-                self.query.get_initial_alias()
-            )
+            "DELETE %s FROM"
+            % self.quote_name_unless_alias(self.query.get_initial_alias())
         ]
         from_sql, from_params = self.get_from_clause()
         result.extend(from_sql)
         where, params = self.compile(self.query.where)
         if where:
-            result.append('WHERE %s' % where)
-        return ' '.join(result), tuple(from_params) + tuple(params)
+            result.append("WHERE %s" % where)
+        return " ".join(result), tuple(from_params) + tuple(params)
 
 
 class SQLUpdateCompiler(compiler.SQLUpdateCompiler, SQLCompiler):

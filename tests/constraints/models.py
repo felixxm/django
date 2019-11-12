@@ -7,16 +7,15 @@ class Product(models.Model):
 
     class Meta:
         required_db_features = {
-            'supports_table_check_constraints',
+            "supports_table_check_constraints",
         }
         constraints = [
             models.CheckConstraint(
-                check=models.Q(price__gt=models.F('discounted_price')),
-                name='price_gt_discounted_price',
+                check=models.Q(price__gt=models.F("discounted_price")),
+                name="price_gt_discounted_price",
             ),
             models.CheckConstraint(
-                check=models.Q(price__gt=0),
-                name='%(app_label)s_%(class)s_price_gt_0',
+                check=models.Q(price__gt=0), name="%(app_label)s_%(class)s_price_gt_0",
             ),
         ]
 
@@ -27,10 +26,10 @@ class UniqueConstraintProduct(models.Model):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=['name', 'color'], name='name_color_uniq'),
+            models.UniqueConstraint(fields=["name", "color"], name="name_color_uniq"),
             models.UniqueConstraint(
-                fields=['name'],
-                name='name_without_color_uniq',
+                fields=["name"],
+                name="name_without_color_uniq",
                 condition=models.Q(color__isnull=True),
             ),
         ]
@@ -42,12 +41,11 @@ class AbstractModel(models.Model):
     class Meta:
         abstract = True
         required_db_features = {
-            'supports_table_check_constraints',
+            "supports_table_check_constraints",
         }
         constraints = [
             models.CheckConstraint(
-                check=models.Q(age__gte=18),
-                name='%(app_label)s_%(class)s_adult',
+                check=models.Q(age__gte=18), name="%(app_label)s_%(class)s_adult",
             ),
         ]
 

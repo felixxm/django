@@ -31,7 +31,7 @@ class Child(models.Model):
     parent = GenericForeignKey()
 
     def __str__(self):
-        return 'I am %s, a child of %s' % (self.name, self.parent)
+        return "I am %s, a child of %s" % (self.name, self.parent)
 
 
 class Book(models.Model):
@@ -79,7 +79,7 @@ class Inner(models.Model):
     readonly = models.CharField("Inner readonly label", max_length=1)
 
     def get_absolute_url(self):
-        return '/inner/'
+        return "/inner/"
 
 
 class Holder2(models.Model):
@@ -99,6 +99,7 @@ class Inner3(models.Model):
     dummy = models.IntegerField()
     holder = models.ForeignKey(Holder3, models.CASCADE)
 
+
 # Models for ticket #8190
 
 
@@ -112,7 +113,9 @@ class Inner4Stacked(models.Model):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=['dummy', 'holder'], name='unique_stacked_dummy_per_holder')
+            models.UniqueConstraint(
+                fields=["dummy", "holder"], name="unique_stacked_dummy_per_holder"
+            )
         ]
 
 
@@ -122,8 +125,11 @@ class Inner4Tabular(models.Model):
 
     class Meta:
         constraints = [
-            models.UniqueConstraint(fields=['dummy', 'holder'], name='unique_tabular_dummy_per_holder')
+            models.UniqueConstraint(
+                fields=["dummy", "holder"], name="unique_tabular_dummy_per_holder"
+            )
         ]
+
 
 # Models for #12749
 
@@ -138,12 +144,15 @@ class OutfitItem(models.Model):
 
 class Fashionista(models.Model):
     person = models.OneToOneField(Person, models.CASCADE, primary_key=True)
-    weaknesses = models.ManyToManyField(OutfitItem, through='ShoppingWeakness', blank=True)
+    weaknesses = models.ManyToManyField(
+        OutfitItem, through="ShoppingWeakness", blank=True
+    )
 
 
 class ShoppingWeakness(models.Model):
     fashionista = models.ForeignKey(Fashionista, models.CASCADE)
     item = models.ForeignKey(OutfitItem, models.CASCADE)
+
 
 # Models for #13510
 
@@ -153,9 +162,12 @@ class TitleCollection(models.Model):
 
 
 class Title(models.Model):
-    collection = models.ForeignKey(TitleCollection, models.SET_NULL, blank=True, null=True)
+    collection = models.ForeignKey(
+        TitleCollection, models.SET_NULL, blank=True, null=True
+    )
     title1 = models.CharField(max_length=100)
     title2 = models.CharField(max_length=100)
+
 
 # Models for #15424
 
@@ -174,7 +186,6 @@ class Novel(models.Model):
 
 
 class NovelReadonlyChapter(Novel):
-
     class Meta:
         proxy = True
 
@@ -188,8 +199,10 @@ class FootNote(models.Model):
     """
     Model added for ticket 19838
     """
+
     chapter = models.ForeignKey(Chapter, models.PROTECT)
     note = models.CharField(max_length=40)
+
 
 # Models for #16838
 
@@ -199,21 +212,22 @@ class CapoFamiglia(models.Model):
 
 
 class Consigliere(models.Model):
-    name = models.CharField(max_length=100, help_text='Help text for Consigliere')
-    capo_famiglia = models.ForeignKey(CapoFamiglia, models.CASCADE, related_name='+')
+    name = models.CharField(max_length=100, help_text="Help text for Consigliere")
+    capo_famiglia = models.ForeignKey(CapoFamiglia, models.CASCADE, related_name="+")
 
 
 class SottoCapo(models.Model):
     name = models.CharField(max_length=100)
-    capo_famiglia = models.ForeignKey(CapoFamiglia, models.CASCADE, related_name='+')
+    capo_famiglia = models.ForeignKey(CapoFamiglia, models.CASCADE, related_name="+")
 
 
 class ReadOnlyInline(models.Model):
-    name = models.CharField(max_length=100, help_text='Help text for ReadOnlyInline')
+    name = models.CharField(max_length=100, help_text="Help text for ReadOnlyInline")
     capo_famiglia = models.ForeignKey(CapoFamiglia, models.CASCADE)
 
 
 # Models for #18433
+
 
 class ParentModelWithCustomPk(models.Model):
     my_own_pk = models.CharField(max_length=100, primary_key=True)
@@ -226,7 +240,7 @@ class ChildModel1(models.Model):
     parent = models.ForeignKey(ParentModelWithCustomPk, models.CASCADE)
 
     def get_absolute_url(self):
-        return '/child_model1/'
+        return "/child_model1/"
 
 
 class ChildModel2(models.Model):
@@ -235,13 +249,14 @@ class ChildModel2(models.Model):
     parent = models.ForeignKey(ParentModelWithCustomPk, models.CASCADE)
 
     def get_absolute_url(self):
-        return '/child_model2/'
+        return "/child_model2/"
 
 
 # Models for #19425
 class BinaryTree(models.Model):
     name = models.CharField(max_length=100)
-    parent = models.ForeignKey('self', models.SET_NULL, null=True, blank=True)
+    parent = models.ForeignKey("self", models.SET_NULL, null=True, blank=True)
+
 
 # Models for #19524
 
@@ -270,6 +285,7 @@ class SomeChildModel(models.Model):
     parent = models.ForeignKey(SomeParentModel, models.CASCADE)
     readonly_field = models.CharField(max_length=1)
 
+
 # Other models
 
 
@@ -278,6 +294,8 @@ class ProfileCollection(models.Model):
 
 
 class Profile(models.Model):
-    collection = models.ForeignKey(ProfileCollection, models.SET_NULL, blank=True, null=True)
+    collection = models.ForeignKey(
+        ProfileCollection, models.SET_NULL, blank=True, null=True
+    )
     first_name = models.CharField(max_length=100)
     last_name = models.CharField(max_length=100)

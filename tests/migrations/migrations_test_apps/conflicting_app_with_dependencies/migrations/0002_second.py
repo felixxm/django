@@ -12,10 +12,5 @@ class Migration(migrations.Migration):
         migrations.DeleteModel("Tribble"),
         migrations.RemoveField("Author", "silly_field"),
         migrations.AddField("Author", "rating", models.IntegerField(default=0)),
-        migrations.CreateModel(
-            "Book",
-            [
-                ("id", models.AutoField(primary_key=True)),
-            ],
-        )
+        migrations.CreateModel("Book", [("id", models.AutoField(primary_key=True)),],),
     ]

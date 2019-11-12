@@ -16,11 +16,12 @@ from django.utils.translation import gettext as _
 
 from .renderers import get_default_renderer
 
-__all__ = ('BaseForm', 'Form')
+__all__ = ("BaseForm", "Form")
 
 
 class DeclarativeFieldsMetaclass(MediaDefiningClass):
     """Collect Fields declared on the base classes."""
+
     def __new__(mcs, name, bases, attrs):
         # Collect fields from current class.
         current_fields = []
@@ -28,15 +29,17 @@ class DeclarativeFieldsMetaclass(MediaDefiningClass):
             if isinstance(value, Field):
                 current_fields.append((key, value))
                 attrs.pop(key)
-        attrs['declared_fields'] = dict(current_fields)
+        attrs["declared_fields"] = dict(current_fields)
 
-        new_class = super(DeclarativeFieldsMetaclass, mcs).__new__(mcs, name, bases, attrs)
+        new_class = super(DeclarativeFieldsMetaclass, mcs).__new__(
+            mcs, name, bases, attrs
+        )
 
         # Walk through the MRO.
         declared_fields = {}
         for base in reversed(new_class.__mro__):
             # Collect fields from base class.
-            if hasattr(base, 'declared_fields'):
+            if hasattr(base, "declared_fields"):
                 declared_fields.update(base.declared_fields)
 
             # Field shadowing.
@@ -58,14 +61,26 @@ class BaseForm:
     improvements to the form API should be made to this class, not to the Form
     class.
     """
+
     default_renderer = None
     field_order = None
     prefix = None
     use_required_attribute = True
 
-    def __init__(self, data=None, files=None, auto_id='id_%s', prefix=None,
-                 initial=None, error_class=ErrorList, label_suffix=None,
-                 empty_permitted=False, field_order=None, use_required_attribute=None, renderer=None):
+    def __init__(
+        self,
+        data=None,
+        files=None,
+        auto_id="id_%s",
+        prefix=None,
+        initial=None,
+        error_class=ErrorList,
+        label_suffix=None,
+        empty_permitted=False,
+        field_order=None,
+        use_required_attribute=None,
+        renderer=None,
+    ):
         self.is_bound = data is not None or files is not None
         self.data = MultiValueDict() if data is None else data
         self.files = MultiValueDict() if files is None else files
@@ -75,7 +90,7 @@ class BaseForm:
         self.initial = initial or {}
         self.error_class = error_class
         # Translators: This is the default suffix added to form field labels
-        self.label_suffix = label_suffix if label_suffix is not None else _(':')
+        self.label_suffix = label_suffix if label_suffix is not None else _(":")
         self.empty_permitted = empty_permitted
         self._errors = None  # Stores the errors after clean() has been called.
 
@@ -93,8 +108,8 @@ class BaseForm:
 
         if self.empty_permitted and self.use_required_attribute:
             raise ValueError(
-                'The empty_permitted and use_required_attribute arguments may '
-                'not both be True.'
+                "The empty_permitted and use_required_attribute arguments may "
+                "not both be True."
             )
 
         # Initialize form renderer. Use a global default if not specified
@@ -138,11 +153,11 @@ class BaseForm:
             is_valid = "Unknown"
         else:
             is_valid = self.is_bound and not self._errors
-        return '<%(cls)s bound=%(bound)s, valid=%(valid)s, fields=(%(fields)s)>' % {
-            'cls': self.__class__.__name__,
-            'bound': self.is_bound,
-            'valid': is_valid,
-            'fields': ';'.join(self.fields),
+        return "<%(cls)s bound=%(bound)s, valid=%(valid)s, fields=(%(fields)s)>" % {
+            "cls": self.__class__.__name__,
+            "bound": self.is_bound,
+            "valid": is_valid,
+            "fields": ";".join(self.fields),
         }
 
     def __iter__(self):
@@ -155,11 +170,8 @@ class BaseForm:
             field = self.fields[name]
         except KeyError:
             raise KeyError(
-                "Key '%s' not found in '%s'. Choices are: %s." % (
-                    name,
-                    self.__class__.__name__,
-                    ', '.join(sorted(self.fields)),
-                )
+                "Key '%s' not found in '%s'. Choices are: %s."
+                % (name, self.__class__.__name__, ", ".join(sorted(self.fields)),)
             )
         if name not in self._bound_fields_cache:
             self._bound_fields_cache[name] = field.get_bound_field(self, name)
@@ -183,26 +195,34 @@ class BaseForm:
 
         Subclasses may wish to override.
         """
-        return '%s-%s' % (self.prefix, field_name) if self.prefix else field_name
+        return "%s-%s" % (self.prefix, field_name) if self.prefix else field_name
 
     def add_initial_prefix(self, field_name):
         """Add an 'initial' prefix for checking dynamic initial values."""
-        return 'initial-%s' % self.add_prefix(field_name)
+        return "initial-%s" % self.add_prefix(field_name)
 
-    def _html_output(self, normal_row, error_row, row_ender, help_text_html, errors_on_separate_row):
+    def _html_output(
+        self, normal_row, error_row, row_ender, help_text_html, errors_on_separate_row
+    ):
         "Output HTML. Used by as_table(), as_ul(), as_p()."
-        top_errors = self.non_field_errors()  # Errors that should be displayed above all fields.
+        top_errors = (
+            self.non_field_errors()
+        )  # Errors that should be displayed above all fields.
         output, hidden_fields = [], []
 
         for name, field in self.fields.items():
-            html_class_attr = ''
+            html_class_attr = ""
             bf = self[name]
             bf_errors = self.error_class(bf.errors)
             if bf.is_hidden:
                 if bf_errors:
                     top_errors.extend(
-                        [_('(Hidden field %(name)s) %(error)s') % {'name': name, 'error': str(e)}
-                         for e in bf_errors])
+                        [
+                            _("(Hidden field %(name)s) %(error)s")
+                            % {"name": name, "error": str(e)}
+                            for e in bf_errors
+                        ]
+                    )
                 hidden_fields.append(str(bf))
             else:
                 # Create a 'class="..."' attribute if the row should have any
@@ -216,30 +236,33 @@ class BaseForm:
 
                 if bf.label:
                     label = conditional_escape(bf.label)
-                    label = bf.label_tag(label) or ''
+                    label = bf.label_tag(label) or ""
                 else:
-                    label = ''
+                    label = ""
 
                 if field.help_text:
                     help_text = help_text_html % field.help_text
                 else:
-                    help_text = ''
+                    help_text = ""
 
-                output.append(normal_row % {
-                    'errors': bf_errors,
-                    'label': label,
-                    'field': bf,
-                    'help_text': help_text,
-                    'html_class_attr': html_class_attr,
-                    'css_classes': css_classes,
-                    'field_name': bf.html_name,
-                })
+                output.append(
+                    normal_row
+                    % {
+                        "errors": bf_errors,
+                        "label": label,
+                        "field": bf,
+                        "help_text": help_text,
+                        "html_class_attr": html_class_attr,
+                        "css_classes": css_classes,
+                        "field_name": bf.html_name,
+                    }
+                )
 
         if top_errors:
             output.insert(0, error_row % top_errors)
 
         if hidden_fields:  # Insert any hidden fields in the last row.
-            str_hidden = ''.join(hidden_fields)
+            str_hidden = "".join(hidden_fields)
             if output:
                 last_row = output[-1]
                 # Chop off the trailing row_ender (e.g. '</td></tr>') and
@@ -249,29 +272,29 @@ class BaseForm:
                     # that users write): if there are only top errors, we may
                     # not be able to conscript the last row for our purposes,
                     # so insert a new, empty row.
-                    last_row = (normal_row % {
-                        'errors': '',
-                        'label': '',
-                        'field': '',
-                        'help_text': '',
-                        'html_class_attr': html_class_attr,
-                        'css_classes': '',
-                        'field_name': '',
-                    })
+                    last_row = normal_row % {
+                        "errors": "",
+                        "label": "",
+                        "field": "",
+                        "help_text": "",
+                        "html_class_attr": html_class_attr,
+                        "css_classes": "",
+                        "field_name": "",
+                    }
                     output.append(last_row)
-                output[-1] = last_row[:-len(row_ender)] + str_hidden + row_ender
+                output[-1] = last_row[: -len(row_ender)] + str_hidden + row_ender
             else:
                 # If there aren't any rows in the output, just append the
                 # hidden fields.
                 output.append(str_hidden)
-        return mark_safe('\n'.join(output))
+        return mark_safe("\n".join(output))
 
     def as_table(self):
         "Return this form rendered as HTML <tr>s -- excluding the <table></table>."
         return self._html_output(
-            normal_row='<tr%(html_class_attr)s><th>%(label)s</th><td>%(errors)s%(field)s%(help_text)s</td></tr>',
+            normal_row="<tr%(html_class_attr)s><th>%(label)s</th><td>%(errors)s%(field)s%(help_text)s</td></tr>",
             error_row='<tr><td colspan="2">%s</td></tr>',
-            row_ender='</td></tr>',
+            row_ender="</td></tr>",
             help_text_html='<br><span class="helptext">%s</span>',
             errors_on_separate_row=False,
         )
@@ -279,9 +302,9 @@ class BaseForm:
     def as_ul(self):
         "Return this form rendered as HTML <li>s -- excluding the <ul></ul>."
         return self._html_output(
-            normal_row='<li%(html_class_attr)s>%(errors)s%(label)s %(field)s%(help_text)s</li>',
-            error_row='<li>%s</li>',
-            row_ender='</li>',
+            normal_row="<li%(html_class_attr)s>%(errors)s%(label)s %(field)s%(help_text)s</li>",
+            error_row="<li>%s</li>",
+            row_ender="</li>",
             help_text_html=' <span class="helptext">%s</span>',
             errors_on_separate_row=False,
         )
@@ -289,9 +312,9 @@ class BaseForm:
     def as_p(self):
         "Return this form rendered as HTML <p>s."
         return self._html_output(
-            normal_row='<p%(html_class_attr)s>%(label)s %(field)s%(help_text)s</p>',
-            error_row='%s',
-            row_ender='</p>',
+            normal_row="<p%(html_class_attr)s>%(label)s %(field)s%(help_text)s</p>",
+            error_row="%s",
+            row_ender="</p>",
             help_text_html=' <span class="helptext">%s</span>',
             errors_on_separate_row=True,
         )
@@ -302,7 +325,9 @@ class BaseForm:
         field -- i.e., from Form.clean(). Return an empty ErrorList if there
         are none.
         """
-        return self.errors.get(NON_FIELD_ERRORS, self.error_class(error_class='nonfield'))
+        return self.errors.get(
+            NON_FIELD_ERRORS, self.error_class(error_class="nonfield")
+        )
 
     def add_error(self, field, error):
         """
@@ -327,7 +352,7 @@ class BaseForm:
             # do the hard work of making sense of the input.
             error = ValidationError(error)
 
-        if hasattr(error, 'error_dict'):
+        if hasattr(error, "error_dict"):
             if field is not None:
                 raise TypeError(
                     "The argument `field` must be `None` when the `error` "
@@ -342,9 +367,11 @@ class BaseForm:
             if field not in self.errors:
                 if field != NON_FIELD_ERRORS and field not in self.fields:
                     raise ValueError(
-                        "'%s' has no field named '%s'." % (self.__class__.__name__, field))
+                        "'%s' has no field named '%s'."
+                        % (self.__class__.__name__, field)
+                    )
                 if field == NON_FIELD_ERRORS:
-                    self._errors[field] = self.error_class(error_class='nonfield')
+                    self._errors[field] = self.error_class(error_class="nonfield")
                 else:
                     self._errors[field] = self.error_class()
             self._errors[field].extend(error_list)
@@ -353,8 +380,8 @@ class BaseForm:
 
     def has_error(self, field, code=None):
         return field in self.errors and (
-            code is None or
-            any(error.code == code for error in self.errors.as_data()[field])
+            code is None
+            or any(error.code == code for error in self.errors.as_data()[field])
         )
 
     def full_clean(self):
@@ -382,7 +409,9 @@ class BaseForm:
             if field.disabled:
                 value = self.get_initial_for_field(field, name)
             else:
-                value = field.widget.value_from_datadict(self.data, self.files, self.add_prefix(name))
+                value = field.widget.value_from_datadict(
+                    self.data, self.files, self.add_prefix(name)
+                )
             try:
                 if isinstance(field, FileField):
                     initial = self.get_initial_for_field(field, name)
@@ -390,8 +419,8 @@ class BaseForm:
                 else:
                     value = field.clean(value)
                 self.cleaned_data[name] = value
-                if hasattr(self, 'clean_%s' % name):
-                    value = getattr(self, 'clean_%s' % name)()
+                if hasattr(self, "clean_%s" % name):
+                    value = getattr(self, "clean_%s" % name)()
                     self.cleaned_data[name] = value
             except ValidationError as e:
                 self.add_error(name, e)
@@ -430,7 +459,9 @@ class BaseForm:
         data = []
         for name, field in self.fields.items():
             prefixed_name = self.add_prefix(name)
-            data_value = field.widget.value_from_datadict(self.data, self.files, prefixed_name)
+            data_value = field.widget.value_from_datadict(
+                self.data, self.files, prefixed_name
+            )
             if not field.show_hidden_initial:
                 # Use the BoundField's initial as this is the value passed to
                 # the widget.
@@ -439,8 +470,11 @@ class BaseForm:
                 initial_prefixed_name = self.add_initial_prefix(name)
                 hidden_widget = field.hidden_widget()
                 try:
-                    initial_value = field.to_python(hidden_widget.value_from_datadict(
-                        self.data, self.files, initial_prefixed_name))
+                    initial_value = field.to_python(
+                        hidden_widget.value_from_datadict(
+                            self.data, self.files, initial_prefixed_name
+                        )
+                    )
                 except ValidationError:
                     # Always assume data has changed if validation fails.
                     data.append(name)

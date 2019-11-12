@@ -7,9 +7,11 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 
 def post_form_view(request):
     """Return a POST form (without a token)."""
-    return HttpResponse(content="""
+    return HttpResponse(
+        content="""
 <html><body><h1>\u00a1Unicode!<form method="post"><input type="text"></form></body></html>
-""")
+"""
+    )
 
 
 @ensure_csrf_cookie
@@ -20,14 +22,14 @@ def ensure_csrf_cookie_view(request):
 
 def token_view(request):
     context = RequestContext(request, processors=[csrf])
-    template = Template('{% csrf_token %}')
+    template = Template("{% csrf_token %}")
     return HttpResponse(template.render(context))
 
 
 def non_token_view_using_request_processor(request):
     """Use the csrf view processor instead of the token."""
     context = RequestContext(request, processors=[csrf])
-    template = Template('')
+    template = Template("")
     return HttpResponse(template.render(context))
 
 

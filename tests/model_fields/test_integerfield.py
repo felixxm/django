@@ -6,8 +6,11 @@ from django.db import IntegrityError, connection, models
 from django.test import SimpleTestCase, TestCase
 
 from .models import (
-    BigIntegerModel, IntegerModel, PositiveIntegerModel,
-    PositiveSmallIntegerModel, SmallIntegerModel,
+    BigIntegerModel,
+    IntegerModel,
+    PositiveIntegerModel,
+    PositiveSmallIntegerModel,
+    SmallIntegerModel,
 )
 
 
@@ -17,7 +20,7 @@ class IntegerFieldTests(TestCase):
 
     @property
     def backend_range(self):
-        field = self.model._meta.get_field('value')
+        field = self.model._meta.get_field("value")
         internal_type = field.get_internal_type()
         return connection.ops.integer_field_range(internal_type)
 
@@ -74,7 +77,7 @@ class IntegerFieldTests(TestCase):
         if min_value is not None:
             instance = self.model(value=min_value - 1)
             expected_message = validators.MinValueValidator.message % {
-                'limit_value': min_value,
+                "limit_value": min_value,
             }
             with self.assertRaisesMessage(ValidationError, expected_message):
                 instance.full_clean()
@@ -84,7 +87,7 @@ class IntegerFieldTests(TestCase):
         if max_value is not None:
             instance = self.model(value=max_value + 1)
             expected_message = validators.MaxValueValidator.message % {
-                'limit_value': max_value,
+                "limit_value": max_value,
             }
             with self.assertRaisesMessage(ValidationError, expected_message):
                 instance.full_clean()
@@ -102,26 +105,38 @@ class IntegerFieldTests(TestCase):
             with self.subTest(callable_limit=callable_limit):
                 if min_backend_value is not None:
                     min_custom_value = min_backend_value + 1
-                    limit_value = (lambda: min_custom_value) if callable_limit else min_custom_value
-                    ranged_value_field = self.model._meta.get_field('value').__class__(
+                    limit_value = (
+                        (lambda: min_custom_value)
+                        if callable_limit
+                        else min_custom_value
+                    )
+                    ranged_value_field = self.model._meta.get_field("value").__class__(
                         validators=[validators.MinValueValidator(limit_value)]
                     )
                     field_range_message = validators.MinValueValidator.message % {
-                        'limit_value': min_custom_value,
+                        "limit_value": min_custom_value,
                     }
-                    with self.assertRaisesMessage(ValidationError, '[%r]' % field_range_message):
+                    with self.assertRaisesMessage(
+                        ValidationError, "[%r]" % field_range_message
+                    ):
                         ranged_value_field.run_validators(min_backend_value - 1)
 
                 if max_backend_value is not None:
                     max_custom_value = max_backend_value - 1
-                    limit_value = (lambda: max_custom_value) if callable_limit else max_custom_value
-                    ranged_value_field = self.model._meta.get_field('value').__class__(
+                    limit_value = (
+                        (lambda: max_custom_value)
+                        if callable_limit
+                        else max_custom_value
+                    )
+                    ranged_value_field = self.model._meta.get_field("value").__class__(
                         validators=[validators.MaxValueValidator(limit_value)]
                     )
                     field_range_message = validators.MaxValueValidator.message % {
-                        'limit_value': max_custom_value,
+                        "limit_value": max_custom_value,
                     }
-                    with self.assertRaisesMessage(ValidationError, '[%r]' % field_range_message):
+                    with self.assertRaisesMessage(
+                        ValidationError, "[%r]" % field_range_message
+                    ):
                         ranged_value_field.run_validators(max_backend_value + 1)
 
     def test_types(self):
@@ -133,8 +148,8 @@ class IntegerFieldTests(TestCase):
         self.assertIsInstance(instance.value, int)
 
     def test_coercing(self):
-        self.model.objects.create(value='10')
-        instance = self.model.objects.get(value='10')
+        self.model.objects.create(value="10")
+        instance = self.model.objects.get(value="10")
         self.assertEqual(instance.value, 10)
 
     def test_invalid_value(self):
@@ -145,8 +160,8 @@ class IntegerFieldTests(TestCase):
             (TypeError, set()),
             (TypeError, object()),
             (TypeError, complex()),
-            (ValueError, 'non-numeric string'),
-            (ValueError, b'non-numeric byte-string'),
+            (ValueError, "non-numeric string"),
+            (ValueError, b"non-numeric byte-string"),
         ]
         for exception, value in tests:
             with self.subTest(value):
@@ -174,30 +189,29 @@ class PositiveIntegerFieldTests(IntegerFieldTests):
     model = PositiveIntegerModel
     documented_range = (0, 2147483647)
 
-    @unittest.skipIf(connection.vendor == 'sqlite', "SQLite doesn't have a constraint.")
+    @unittest.skipIf(connection.vendor == "sqlite", "SQLite doesn't have a constraint.")
     def test_negative_values(self):
         p = PositiveIntegerModel.objects.create(value=0)
-        p.value = models.F('value') - 1
+        p.value = models.F("value") - 1
         with self.assertRaises(IntegrityError):
             p.save()
 
 
 class ValidationTests(SimpleTestCase):
-
     class Choices(models.IntegerChoices):
         A = 1
 
     def test_integerfield_cleans_valid_string(self):
         f = models.IntegerField()
-        self.assertEqual(f.clean('2', None), 2)
+        self.assertEqual(f.clean("2", None), 2)
 
     def test_integerfield_raises_error_on_invalid_intput(self):
         f = models.IntegerField()
         with self.assertRaises(ValidationError):
-            f.clean('a', None)
+            f.clean("a", None)
 
     def test_choices_validation_supports_named_groups(self):
-        f = models.IntegerField(choices=(('group', ((10, 'A'), (20, 'B'))), (30, 'C')))
+        f = models.IntegerField(choices=(("group", ((10, "A"), (20, "B"))), (30, "C")))
         self.assertEqual(10, f.clean(10, None))
 
     def test_nullable_integerfield_raises_error_with_blank_false(self):
@@ -214,20 +228,20 @@ class ValidationTests(SimpleTestCase):
         with self.assertRaises(ValidationError):
             f.clean(None, None)
         with self.assertRaises(ValidationError):
-            f.clean('', None)
+            f.clean("", None)
 
     def test_integerfield_validates_zero_against_choices(self):
         f = models.IntegerField(choices=((1, 1),))
         with self.assertRaises(ValidationError):
-            f.clean('0', None)
+            f.clean("0", None)
 
     def test_enum_choices_cleans_valid_string(self):
         f = models.IntegerField(choices=self.Choices.choices)
-        self.assertEqual(f.clean('1', None), 1)
+        self.assertEqual(f.clean("1", None), 1)
 
     def test_enum_choices_invalid_input(self):
         f = models.IntegerField(choices=self.Choices.choices)
         with self.assertRaises(ValidationError):
-            f.clean('A', None)
+            f.clean("A", None)
         with self.assertRaises(ValidationError):
-            f.clean('3', None)
+            f.clean("3", None)

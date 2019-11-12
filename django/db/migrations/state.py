@@ -16,9 +16,9 @@ from django.utils.version import get_docs_version
 from .exceptions import InvalidBasesError
 
 
-def _get_app_label_and_model_name(model, app_label=''):
+def _get_app_label_and_model_name(model, app_label=""):
     if isinstance(model, str):
-        split = model.split('.', 1)
+        split = model.split(".", 1)
         return tuple(split) if len(split) == 2 else (app_label, split[0])
     else:
         return model._meta.app_label, model._meta.model_name
@@ -27,12 +27,17 @@ def _get_app_label_and_model_name(model, app_label=''):
 def _get_related_models(m):
     """Return all models that have a direct relationship to the given model."""
     related_models = [
-        subclass for subclass in m.__subclasses__()
+        subclass
+        for subclass in m.__subclasses__()
         if issubclass(subclass, models.Model)
     ]
     related_fields_models = set()
     for f in m._meta.get_fields(include_parents=True, include_hidden=True):
-        if f.is_relation and f.related_model is not None and not isinstance(f.related_model, str):
+        if (
+            f.is_relation
+            and f.related_model is not None
+            and not isinstance(f.related_model, str)
+        ):
             related_fields_models.add(f.model)
             related_models.append(f.related_model)
     # Reverse accessors of foreign keys to proxy models are attached to their
@@ -68,7 +73,10 @@ def get_related_models_recursive(model):
     seen = set()
     queue = _get_related_models(model)
     for rel_mod in queue:
-        rel_app_label, rel_model_name = rel_mod._meta.app_label, rel_mod._meta.model_name
+        rel_app_label, rel_model_name = (
+            rel_mod._meta.app_label,
+            rel_mod._meta.model_name,
+        )
         if (rel_app_label, rel_model_name) in seen:
             continue
         seen.add((rel_app_label, rel_model_name))
@@ -92,12 +100,12 @@ class ProjectState:
     def add_model(self, model_state):
         app_label, model_name = model_state.app_label, model_state.name_lower
         self.models[(app_label, model_name)] = model_state
-        if 'apps' in self.__dict__:  # hasattr would cache the property
+        if "apps" in self.__dict__:  # hasattr would cache the property
             self.reload_model(app_label, model_name)
 
     def remove_model(self, app_label, model_name):
         del self.models[app_label, model_name]
-        if 'apps' in self.__dict__:  # hasattr would cache the property
+        if "apps" in self.__dict__:  # hasattr would cache the property
             self.apps.unregister_model(app_label, model_name)
             # Need to do this explicitly since unregister_model() doesn't clear
             # the cache automatically (#24513)
@@ -130,7 +138,9 @@ class ProjectState:
             if field.is_relation:
                 if field.remote_field.model == RECURSIVE_RELATIONSHIP_CONSTANT:
                     continue
-                rel_app_label, rel_model_name = _get_app_label_and_model_name(field.related_model, app_label)
+                rel_app_label, rel_model_name = _get_app_label_and_model_name(
+                    field.related_model, app_label
+                )
                 direct_related_models.add((rel_app_label, rel_model_name.lower()))
 
         # For all direct related models recursively get all related models.
@@ -152,15 +162,17 @@ class ProjectState:
         return related_models
 
     def reload_model(self, app_label, model_name, delay=False):
-        if 'apps' in self.__dict__:  # hasattr would cache the property
+        if "apps" in self.__dict__:  # hasattr would cache the property
             related_models = self._find_reload_model(app_label, model_name, delay)
             self._reload(related_models)
 
     def reload_models(self, models, delay=True):
-        if 'apps' in self.__dict__:  # hasattr would cache the property
+        if "apps" in self.__dict__:  # hasattr would cache the property
             related_models = set()
             for app_label, model_name in models:
-                related_models.update(self._find_reload_model(app_label, model_name, delay))
+                related_models.update(
+                    self._find_reload_model(app_label, model_name, delay)
+                )
             self._reload(related_models)
 
     def _reload(self, related_models):
@@ -195,14 +207,14 @@ class ProjectState:
             models={k: v.clone() for k, v in self.models.items()},
             real_apps=self.real_apps,
         )
-        if 'apps' in self.__dict__:
+        if "apps" in self.__dict__:
             new_state.apps = self.apps.clone()
         new_state.is_delayed = self.is_delayed
         return new_state
 
     def clear_delayed_apps_cache(self):
-        if self.is_delayed and 'apps' in self.__dict__:
-            del self.__dict__['apps']
+        if self.is_delayed and "apps" in self.__dict__:
+            del self.__dict__["apps"]
 
     @cached_property
     def apps(self):
@@ -223,13 +235,16 @@ class ProjectState:
         return cls(app_models)
 
     def __eq__(self, other):
-        return self.models == other.models and set(self.real_apps) == set(other.real_apps)
+        return self.models == other.models and set(self.real_apps) == set(
+            other.real_apps
+        )
 
 
 class AppConfigStub(AppConfig):
     """Stub of an AppConfig. Only provides a label and a dict of models."""
+
     # Not used, but required by AppConfig.__init__
-    path = ''
+    path = ""
 
     def __init__(self, label):
         self.label = label
@@ -247,6 +262,7 @@ class StateApps(Apps):
     Subclass of the global Apps registry class to better handle dynamic model
     additions and removals.
     """
+
     def __init__(self, real_apps, models, ignore_swappable=False):
         # Any apps in self.real_apps should have all their models included
         # in the render. We don't use the original model instances as there
@@ -260,7 +276,9 @@ class StateApps(Apps):
                 self.real_models.append(ModelState.from_model(model, exclude_rels=True))
         # Populate the app registry with a stub for each application.
         app_labels = {model_state.app_label for model_state in models.values()}
-        app_configs = [AppConfigStub(label) for label in sorted([*real_apps, *app_labels])]
+        app_configs = [
+            AppConfigStub(label) for label in sorted([*real_apps, *app_labels])
+        ]
         super().__init__(app_configs)
 
         # These locks get in the way of copying as implemented in clone(),
@@ -273,7 +291,10 @@ class StateApps(Apps):
 
         # There shouldn't be any operations pending at this point.
         from django.core.checks.model_checks import _check_lazy_references
-        ignore = {make_model_tuple(settings.AUTH_USER_MODEL)} if ignore_swappable else set()
+
+        ignore = (
+            {make_model_tuple(settings.AUTH_USER_MODEL)} if ignore_swappable else set()
+        )
         errors = _check_lazy_references(self, ignore=ignore)
         if errors:
             raise ValueError("\n".join(error.msg for error in errors))
@@ -357,37 +378,41 @@ class ModelState:
     assign new ones, as these are not detached during a clone.
     """
 
-    def __init__(self, app_label, name, fields, options=None, bases=None, managers=None):
+    def __init__(
+        self, app_label, name, fields, options=None, bases=None, managers=None
+    ):
         self.app_label = app_label
         self.name = name
         self.fields = fields
         self.options = options or {}
-        self.options.setdefault('indexes', [])
-        self.options.setdefault('constraints', [])
+        self.options.setdefault("indexes", [])
+        self.options.setdefault("constraints", [])
         self.bases = bases or (models.Model,)
         self.managers = managers or []
         # Sanity-check that fields is NOT a dict. It must be ordered.
         if isinstance(self.fields, dict):
-            raise ValueError("ModelState.fields cannot be a dict - it must be a list of 2-tuples.")
+            raise ValueError(
+                "ModelState.fields cannot be a dict - it must be a list of 2-tuples."
+            )
         for name, field in fields:
             # Sanity-check that fields are NOT already bound to a model.
-            if hasattr(field, 'model'):
+            if hasattr(field, "model"):
                 raise ValueError(
                     'ModelState.fields cannot be bound to a model - "%s" is.' % name
                 )
             # Sanity-check that relation fields are NOT referring to a model class.
-            if field.is_relation and hasattr(field.related_model, '_meta'):
+            if field.is_relation and hasattr(field.related_model, "_meta"):
                 raise ValueError(
                     'ModelState.fields cannot refer to a model class - "%s.to" does. '
-                    'Use a string reference instead.' % name
+                    "Use a string reference instead." % name
                 )
-            if field.many_to_many and hasattr(field.remote_field.through, '_meta'):
+            if field.many_to_many and hasattr(field.remote_field.through, "_meta"):
                 raise ValueError(
                     'ModelState.fields cannot refer to a model class - "%s.through" does. '
-                    'Use a string reference instead.' % name
+                    "Use a string reference instead." % name
                 )
         # Sanity-check that indexes have their name set.
-        for index in self.options['indexes']:
+        for index in self.options["indexes"]:
             if not index.name:
                 raise ValueError(
                     "Indexes passed to ModelState require a name attribute. "
@@ -412,22 +437,20 @@ class ModelState:
             try:
                 fields.append((name, field.clone()))
             except TypeError as e:
-                raise TypeError("Couldn't reconstruct field %s on %s: %s" % (
-                    name,
-                    model._meta.label,
-                    e,
-                ))
+                raise TypeError(
+                    "Couldn't reconstruct field %s on %s: %s"
+                    % (name, model._meta.label, e,)
+                )
         if not exclude_rels:
             for field in model._meta.local_many_to_many:
                 name = field.name
                 try:
                     fields.append((name, field.clone()))
                 except TypeError as e:
-                    raise TypeError("Couldn't reconstruct m2m field %s on %s: %s" % (
-                        name,
-                        model._meta.object_name,
-                        e,
-                    ))
+                    raise TypeError(
+                        "Couldn't reconstruct m2m field %s on %s: %s"
+                        % (name, model._meta.object_name, e,)
+                    )
         # Extract the options
         options = {}
         for name in DEFAULT_NAMES:
@@ -446,9 +469,11 @@ class ModelState:
                     for index in indexes:
                         if not index.name:
                             index.set_name_with_model(model)
-                    options['indexes'] = indexes
-                elif name == 'constraints':
-                    options['constraints'] = [con.clone() for con in model._meta.constraints]
+                    options["indexes"] = indexes
+                elif name == "constraints":
+                    options["constraints"] = [
+                        con.clone() for con in model._meta.constraints
+                    ]
                 else:
                     options[name] = model._meta.original_attrs[name]
         # If we're ignoring relationships, remove all field-listing model
@@ -458,8 +483,10 @@ class ModelState:
                 if key in options:
                     del options[key]
         # Private fields are ignored, so remove options that refer to them.
-        elif options.get('order_with_respect_to') in {field.name for field in model._meta.private_fields}:
-            del options['order_with_respect_to']
+        elif options.get("order_with_respect_to") in {
+            field.name for field in model._meta.private_fields
+        }:
+            del options["order_with_respect_to"]
 
         def flatten_bases(model):
             bases = []
@@ -475,19 +502,19 @@ class ModelState:
         # __bases__ we may end up with duplicates and ordering issues, we
         # therefore discard any duplicates and reorder the bases according
         # to their index in the MRO.
-        flattened_bases = sorted(set(flatten_bases(model)), key=lambda x: model.__mro__.index(x))
+        flattened_bases = sorted(
+            set(flatten_bases(model)), key=lambda x: model.__mro__.index(x)
+        )
 
         # Make our record
         bases = tuple(
-            (
-                base._meta.label_lower
-                if hasattr(base, "_meta") else
-                base
-            )
+            (base._meta.label_lower if hasattr(base, "_meta") else base)
             for base in flattened_bases
         )
         # Ensure at least one base inherits from models.Model
-        if not any((isinstance(base, str) or issubclass(base, models.Model)) for base in bases):
+        if not any(
+            (isinstance(base, str) or issubclass(base, models.Model)) for base in bases
+        ):
             bases = (models.Model,)
 
         managers = []
@@ -514,7 +541,7 @@ class ModelState:
             managers.append((manager.name, new_manager))
 
         # Ignore a shimmed default manager called objects if it's the only one.
-        if managers == [('objects', default_manager_shim)]:
+        if managers == [("objects", default_manager_shim)]:
             managers = []
 
         # Construct the new ModelState
@@ -557,7 +584,7 @@ class ModelState:
     def render(self, apps):
         """Create a Model object from our current state into the given apps."""
         # First, make a Meta object
-        meta_contents = {'app_label': self.app_label, 'apps': apps, **self.options}
+        meta_contents = {"app_label": self.app_label, "apps": apps, **self.options}
         meta = type("Meta", (), meta_contents)
         # Then, work out our bases
         try:
@@ -566,11 +593,13 @@ class ModelState:
                 for base in self.bases
             )
         except LookupError:
-            raise InvalidBasesError("Cannot resolve one or more bases from %r" % (self.bases,))
+            raise InvalidBasesError(
+                "Cannot resolve one or more bases from %r" % (self.bases,)
+            )
         # Turn fields into a dict for the body, add other bits
         body = {name: field.clone() for name, field in self.fields}
-        body['Meta'] = meta
-        body['__module__'] = "__fake__"
+        body["Meta"] = meta
+        body["__module__"] = "__fake__"
 
         # Restore managers
         body.update(self.construct_managers())
@@ -584,28 +613,30 @@ class ModelState:
         raise ValueError("No field called %s on model %s" % (name, self.name))
 
     def get_index_by_name(self, name):
-        for index in self.options['indexes']:
+        for index in self.options["indexes"]:
             if index.name == name:
                 return index
         raise ValueError("No index named %s on model %s" % (name, self.name))
 
     def get_constraint_by_name(self, name):
-        for constraint in self.options['constraints']:
+        for constraint in self.options["constraints"]:
             if constraint.name == name:
                 return constraint
-        raise ValueError('No constraint named %s on model %s' % (name, self.name))
+        raise ValueError("No constraint named %s on model %s" % (name, self.name))
 
     def __repr__(self):
         return "<%s: '%s.%s'>" % (self.__class__.__name__, self.app_label, self.name)
 
     def __eq__(self, other):
         return (
-            (self.app_label == other.app_label) and
-            (self.name == other.name) and
-            (len(self.fields) == len(other.fields)) and
-            all((k1 == k2 and (f1.deconstruct()[1:] == f2.deconstruct()[1:]))
-                for (k1, f1), (k2, f2) in zip(self.fields, other.fields)) and
-            (self.options == other.options) and
-            (self.bases == other.bases) and
-            (self.managers == other.managers)
+            (self.app_label == other.app_label)
+            and (self.name == other.name)
+            and (len(self.fields) == len(other.fields))
+            and all(
+                (k1 == k2 and (f1.deconstruct()[1:] == f2.deconstruct()[1:]))
+                for (k1, f1), (k2, f2) in zip(self.fields, other.fields)
+            )
+            and (self.options == other.options)
+            and (self.bases == other.bases)
+            and (self.managers == other.managers)
         )

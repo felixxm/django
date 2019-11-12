@@ -14,8 +14,7 @@ class MigrationDataPersistenceTestCase(TransactionTestCase):
 
     def test_persistence(self):
         self.assertEqual(
-            Book.objects.count(),
-            1,
+            Book.objects.count(), 1,
         )
 
 
@@ -26,6 +25,5 @@ class MigrationDataNormalPersistenceTestCase(TestCase):
 
     def test_persistence(self):
         self.assertEqual(
-            Book.objects.count(),
-            1,
+            Book.objects.count(), 1,
         )

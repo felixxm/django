@@ -11,20 +11,36 @@ from django.utils.functional import lazy
 from django.utils.regex_helper import _lazy_re_compile
 
 __all__ = [
-    'activate', 'deactivate', 'override', 'deactivate_all',
-    'get_language', 'get_language_from_request',
-    'get_language_info', 'get_language_bidi',
-    'check_for_language', 'to_language', 'to_locale', 'templatize',
-    'gettext', 'gettext_lazy', 'gettext_noop',
-    'ugettext', 'ugettext_lazy', 'ugettext_noop',
-    'ngettext', 'ngettext_lazy',
-    'ungettext', 'ungettext_lazy',
-    'pgettext', 'pgettext_lazy',
-    'npgettext', 'npgettext_lazy',
-    'LANGUAGE_SESSION_KEY',
+    "activate",
+    "deactivate",
+    "override",
+    "deactivate_all",
+    "get_language",
+    "get_language_from_request",
+    "get_language_info",
+    "get_language_bidi",
+    "check_for_language",
+    "to_language",
+    "to_locale",
+    "templatize",
+    "gettext",
+    "gettext_lazy",
+    "gettext_noop",
+    "ugettext",
+    "ugettext_lazy",
+    "ugettext_noop",
+    "ngettext",
+    "ngettext_lazy",
+    "ungettext",
+    "ungettext_lazy",
+    "pgettext",
+    "pgettext_lazy",
+    "npgettext",
+    "npgettext_lazy",
+    "LANGUAGE_SESSION_KEY",
 ]
 
-LANGUAGE_SESSION_KEY = '_language'
+LANGUAGE_SESSION_KEY = "_language"
 
 
 class TranslatorCommentWarning(SyntaxWarning):
@@ -38,6 +54,7 @@ class TranslatorCommentWarning(SyntaxWarning):
 # a reference to one of these functions, don't break that reference when we
 # replace the functions with their real counterparts (once we do access the
 # settings).
+
 
 class Trans:
     """
@@ -54,11 +71,20 @@ class Trans:
 
     def __getattr__(self, real_name):
         from django.conf import settings
+
         if settings.USE_I18N:
             from django.utils.translation import trans_real as trans
-            from django.utils.translation.reloader import watch_for_translation_changes, translation_file_changed
-            autoreload_started.connect(watch_for_translation_changes, dispatch_uid='translation_file_changed')
-            file_changed.connect(translation_file_changed, dispatch_uid='translation_file_changed')
+            from django.utils.translation.reloader import (
+                watch_for_translation_changes,
+                translation_file_changed,
+            )
+
+            autoreload_started.connect(
+                watch_for_translation_changes, dispatch_uid="translation_file_changed"
+            )
+            file_changed.connect(
+                translation_file_changed, dispatch_uid="translation_file_changed"
+            )
         else:
             from django.utils.translation import trans_null as trans
         setattr(self, real_name, getattr(trans, real_name))
@@ -81,9 +107,10 @@ def ugettext_noop(message):
     Alias of gettext_noop() since Django 2.0.
     """
     warnings.warn(
-        'django.utils.translation.ugettext_noop() is deprecated in favor of '
-        'django.utils.translation.gettext_noop().',
-        RemovedInDjango40Warning, stacklevel=2,
+        "django.utils.translation.ugettext_noop() is deprecated in favor of "
+        "django.utils.translation.gettext_noop().",
+        RemovedInDjango40Warning,
+        stacklevel=2,
     )
     return gettext_noop(message)
 
@@ -98,9 +125,10 @@ def ugettext(message):
     Alias of gettext() since Django 2.0.
     """
     warnings.warn(
-        'django.utils.translation.ugettext() is deprecated in favor of '
-        'django.utils.translation.gettext().',
-        RemovedInDjango40Warning, stacklevel=2,
+        "django.utils.translation.ugettext() is deprecated in favor of "
+        "django.utils.translation.gettext().",
+        RemovedInDjango40Warning,
+        stacklevel=2,
     )
     return gettext(message)
 
@@ -115,9 +143,10 @@ def ungettext(singular, plural, number):
     Alias of ngettext() since Django 2.0.
     """
     warnings.warn(
-        'django.utils.translation.ungettext() is deprecated in favor of '
-        'django.utils.translation.ngettext().',
-        RemovedInDjango40Warning, stacklevel=2,
+        "django.utils.translation.ungettext() is deprecated in favor of "
+        "django.utils.translation.ngettext().",
+        RemovedInDjango40Warning,
+        stacklevel=2,
     )
     return ngettext(singular, plural, number)
 
@@ -140,40 +169,43 @@ def ugettext_lazy(message):
     Alias of gettext_lazy since Django 2.0.
     """
     warnings.warn(
-        'django.utils.translation.ugettext_lazy() is deprecated in favor of '
-        'django.utils.translation.gettext_lazy().',
-        RemovedInDjango40Warning, stacklevel=2,
+        "django.utils.translation.ugettext_lazy() is deprecated in favor of "
+        "django.utils.translation.gettext_lazy().",
+        RemovedInDjango40Warning,
+        stacklevel=2,
     )
     return gettext_lazy(message)
 
 
 def lazy_number(func, resultclass, number=None, **kwargs):
     if isinstance(number, int):
-        kwargs['number'] = number
+        kwargs["number"] = number
         proxy = lazy(func, resultclass)(**kwargs)
     else:
         original_kwargs = kwargs.copy()
 
         class NumberAwareString(resultclass):
             def __bool__(self):
-                return bool(kwargs['singular'])
+                return bool(kwargs["singular"])
 
             def _get_number_value(self, values):
                 try:
                     return values[number]
                 except KeyError:
                     raise KeyError(
-                        "Your dictionary lacks key '%s\'. Please provide "
+                        "Your dictionary lacks key '%s'. Please provide "
                         "it, because it is required to determine whether "
                         "string is singular or plural." % number
                     )
 
             def _translate(self, number_value):
-                kwargs['number'] = number_value
+                kwargs["number"] = number_value
                 return func(**kwargs)
 
             def format(self, *args, **kwargs):
-                number_value = self._get_number_value(kwargs) if kwargs and number else args[0]
+                number_value = (
+                    self._get_number_value(kwargs) if kwargs and number else args[0]
+                )
                 return self._translate(number_value).format(*args, **kwargs)
 
             def __mod__(self, rhs):
@@ -190,7 +222,10 @@ def lazy_number(func, resultclass, number=None, **kwargs):
                 return translated
 
         proxy = lazy(lambda **kwargs: NumberAwareString(), NumberAwareString)(**kwargs)
-        proxy.__reduce__ = lambda: (_lazy_number_unpickle, (func, resultclass, number, original_kwargs))
+        proxy.__reduce__ = lambda: (
+            _lazy_number_unpickle,
+            (func, resultclass, number, original_kwargs),
+        )
     return proxy
 
 
@@ -208,15 +243,18 @@ def ungettext_lazy(singular, plural, number=None):
     An alias of ungettext_lazy() since Django 2.0.
     """
     warnings.warn(
-        'django.utils.translation.ungettext_lazy() is deprecated in favor of '
-        'django.utils.translation.ngettext_lazy().',
-        RemovedInDjango40Warning, stacklevel=2,
+        "django.utils.translation.ungettext_lazy() is deprecated in favor of "
+        "django.utils.translation.ngettext_lazy().",
+        RemovedInDjango40Warning,
+        stacklevel=2,
     )
     return ngettext_lazy(singular, plural, number)
 
 
 def npgettext_lazy(context, singular, plural, number=None):
-    return lazy_number(npgettext, str, context=context, singular=singular, plural=plural, number=number)
+    return lazy_number(
+        npgettext, str, context=context, singular=singular, plural=plural, number=number
+    )
 
 
 def activate(language):
@@ -262,27 +300,27 @@ def check_for_language(lang_code):
 
 def to_language(locale):
     """Turn a locale name (en_US) into a language name (en-us)."""
-    p = locale.find('_')
+    p = locale.find("_")
     if p >= 0:
-        return locale[:p].lower() + '-' + locale[p + 1:].lower()
+        return locale[:p].lower() + "-" + locale[p + 1 :].lower()
     else:
         return locale.lower()
 
 
 def to_locale(language):
     """Turn a language name (en-us) into a locale name (en_US)."""
-    language, _, country = language.lower().partition('-')
+    language, _, country = language.lower().partition("-")
     if not country:
         return language
     # A language with > 2 characters after the dash only has its first
     # character after the dash capitalized; e.g. sr-latn becomes sr_Latn.
     # A language with 2 characters after the dash has both characters
     # capitalized; e.g. en-us becomes en_US.
-    country, _, tail = country.partition('-')
+    country, _, tail = country.partition("-")
     country = country.title() if len(country) > 2 else country.upper()
     if tail:
-        country += '-' + tail
-    return language + '_' + country
+        country += "-" + tail
+    return language + "_" + country
 
 
 def get_language_from_request(request, check_path=False):
@@ -299,6 +337,7 @@ def get_supported_language_variant(lang_code, *, strict=False):
 
 def templatize(src, **kwargs):
     from .template import templatize
+
     return templatize(src, **kwargs)
 
 
@@ -308,32 +347,35 @@ def deactivate_all():
 
 def get_language_info(lang_code):
     from django.conf.locale import LANG_INFO
+
     try:
         lang_info = LANG_INFO[lang_code]
-        if 'fallback' in lang_info and 'name' not in lang_info:
-            info = get_language_info(lang_info['fallback'][0])
+        if "fallback" in lang_info and "name" not in lang_info:
+            info = get_language_info(lang_info["fallback"][0])
         else:
             info = lang_info
     except KeyError:
-        if '-' not in lang_code:
+        if "-" not in lang_code:
             raise KeyError("Unknown language code %s." % lang_code)
-        generic_lang_code = lang_code.split('-')[0]
+        generic_lang_code = lang_code.split("-")[0]
         try:
             info = LANG_INFO[generic_lang_code]
         except KeyError:
-            raise KeyError("Unknown language code %s and %s." % (lang_code, generic_lang_code))
+            raise KeyError(
+                "Unknown language code %s and %s." % (lang_code, generic_lang_code)
+            )
 
     if info:
-        info['name_translated'] = gettext_lazy(info['name'])
+        info["name_translated"] = gettext_lazy(info["name"])
     return info
 
 
-trim_whitespace_re = _lazy_re_compile(r'\s*\n\s*')
+trim_whitespace_re = _lazy_re_compile(r"\s*\n\s*")
 
 
 def trim_whitespace(s):
-    return trim_whitespace_re.sub(' ', s.strip())
+    return trim_whitespace_re.sub(" ", s.strip())
 
 
 def round_away_from_one(value):
-    return int(Decimal(value - 1).quantize(Decimal('0'), rounding=ROUND_UP)) + 1
+    return int(Decimal(value - 1).quantize(Decimal("0"), rounding=ROUND_UP)) + 1

@@ -19,6 +19,7 @@ class MigrationRecorder:
     If a migration is unapplied its row is removed from the table. Having
     a row in the table always means a migration is applied.
     """
+
     _migration_class = None
 
     @classproperty
@@ -28,6 +29,7 @@ class MigrationRecorder:
         MigrationRecorder.
         """
         if cls._migration_class is None:
+
             class Migration(models.Model):
                 app = models.CharField(max_length=255)
                 name = models.CharField(max_length=255)
@@ -35,11 +37,11 @@ class MigrationRecorder:
 
                 class Meta:
                     apps = Apps()
-                    app_label = 'migrations'
-                    db_table = 'django_migrations'
+                    app_label = "migrations"
+                    db_table = "django_migrations"
 
                 def __str__(self):
-                    return 'Migration %s for %s' % (self.name, self.app)
+                    return "Migration %s for %s" % (self.name, self.app)
 
             cls._migration_class = Migration
         return cls._migration_class
@@ -53,7 +55,10 @@ class MigrationRecorder:
 
     def has_table(self):
         """Return True if the django_migrations table exists."""
-        return self.Migration._meta.db_table in self.connection.introspection.table_names(self.connection.cursor())
+        return (
+            self.Migration._meta.db_table
+            in self.connection.introspection.table_names(self.connection.cursor())
+        )
 
     def ensure_schema(self):
         """Ensure the table exists and has the correct schema."""
@@ -66,7 +71,9 @@ class MigrationRecorder:
             with self.connection.schema_editor() as editor:
                 editor.create_model(self.Migration)
         except DatabaseError as exc:
-            raise MigrationSchemaMissing("Unable to create the django_migrations table (%s)" % exc)
+            raise MigrationSchemaMissing(
+                "Unable to create the django_migrations table (%s)" % exc
+            )
 
     def applied_migrations(self):
         """
@@ -74,7 +81,10 @@ class MigrationRecorder:
         for all applied migrations.
         """
         if self.has_table():
-            return {(migration.app, migration.name): migration for migration in self.migration_qs}
+            return {
+                (migration.app, migration.name): migration
+                for migration in self.migration_qs
+            }
         else:
             # If the django_migrations table doesn't exist, then no migrations
             # are applied.

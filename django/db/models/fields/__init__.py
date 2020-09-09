@@ -518,7 +518,6 @@ class Field(RegisterLookupMixin):
         if isinstance(other, Field):
             return (
                 self.creation_counter == other.creation_counter and
-                hasattr(self, 'model') == hasattr(other, 'model') and
                 getattr(self, 'model', None) == getattr(other, 'model', None)
             )
         return NotImplemented
@@ -535,28 +534,19 @@ class Field(RegisterLookupMixin):
             elif hasattr(self, 'model') != hasattr(other, 'model'):
                 return not hasattr(self, 'model')  # Order no-model fields first
             else:
-                # models are not directly orderable.
+                # creation_counter's are equal, compare only models.
                 return (
-                    (
-                        self.creation_counter,
-                        self.model._meta.app_label,
-                        self.model._meta.model_name,
-                    ) < (
-                        other.creation_counter,
-                        other.model._meta.app_label,
-                        other.model._meta.model_name,
-                    )
+                    (self.model._meta.app_label, self.model._meta.model_name) <
+                    (other.model._meta.app_label, other.model._meta.model_name)
                 )
         return NotImplemented
 
     def __hash__(self):
-        return hash(
-            (
-                self.creation_counter,
-                self.model._meta.app_label if hasattr(self, 'model') else None,
-                self.model._meta.model_name if hasattr(self, 'model') else None,
-            )
-        )
+        return hash((
+            self.creation_counter,
+            self.model._meta.app_label if hasattr(self, 'model') else None,
+            self.model._meta.model_name if hasattr(self, 'model') else None,
+        ))
 
     def __deepcopy__(self, memodict):
         # We don't have to deepcopy very much here, since most things are not

@@ -21,7 +21,6 @@ from django.test.utils import (
     teardown_test_environment,
 )
 from django.utils.datastructures import OrderedSet
-from django.utils.version import PY37
 
 try:
     import ipdb as pdb
@@ -540,15 +539,14 @@ class DiscoverRunner:
                 'Output timings, including database set up and total run time.'
             ),
         )
-        if PY37:
-            parser.add_argument(
-                '-k', action='append', dest='test_name_patterns',
-                help=(
-                    'Only run test methods and classes that match the pattern '
-                    'or substring. Can be used multiple times. Same as '
-                    'unittest -k option.'
-                ),
-            )
+        parser.add_argument(
+            '-k', action='append', dest='test_name_patterns',
+            help=(
+                'Only run test methods and classes that match the pattern '
+                'or substring. Can be used multiple times. Same as '
+                'unittest -k option.'
+            ),
+        )
 
     def setup_test_environment(self, **kwargs):
         setup_test_environment(debug=self.debug_mode)

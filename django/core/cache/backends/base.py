@@ -276,6 +276,12 @@ class BaseCache:
         """Close the cache connection"""
         pass
 
+    def make_and_validate_key(self, key, version=None):
+        """Helper to make and validate keys."""
+        key = self.make_key(key, version=version)
+        self.validate_key(key)
+        return key
+
 
 def memcache_key_warnings(key):
     if len(key) > MEMCACHE_MAX_KEY_LENGTH:

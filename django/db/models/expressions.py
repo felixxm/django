@@ -2,6 +2,7 @@ import copy
 import datetime
 import functools
 import inspect
+from collections import defaultdict
 from decimal import Decimal
 from uuid import UUID
 
@@ -309,18 +310,18 @@ class BaseExpression:
 
     def _resolve_output_field(self):
         """
-        Attempt to infer the output type of the expression. If the output
-        fields of all source fields match then, simply infer the same type
-        here. This isn't always correct, but it makes sense most of the time.
+        Attempt to infer the output type of the expression.
 
-        Consider the difference between `2 + 2` and `2 / 3`. Inferring
-        the type here is a convenience for the common case. The user should
-        supply their own output_field with more complex computations.
+        As a guess, if the output fields of all source fields match then simply
+        infer the same type here.
 
         If a source's output field resolves to None, exclude it from this check.
         If all sources are None, then an error is raised higher up the stack in
         the output_field property.
         """
+        # This guess is mostly a bad idea, but there is quite a lot of code
+        # (especially 3rd party Func subclasses) that depend on it, we'd need a
+        # deprecation path to fix it.
         sources_iter = (
             source for source in self.get_source_fields() if source is not None
         )
@@ -465,16 +466,168 @@ class Expression(BaseExpression, Combinable):
         return hash(self.identity)
 
 
-_connector_combinators = {
-    connector: [
-        (fields.IntegerField, fields.IntegerField, fields.IntegerField),
-        (fields.IntegerField, fields.DecimalField, fields.DecimalField),
-        (fields.DecimalField, fields.IntegerField, fields.DecimalField),
-        (fields.IntegerField, fields.FloatField, fields.FloatField),
-        (fields.FloatField, fields.IntegerField, fields.FloatField),
-    ]
-    for connector in (Combinable.ADD, Combinable.SUB, Combinable.MUL, Combinable.DIV)
-}
+# Type infererence for CombinedExpression.output_field.
+# Missing items will result in FieldError, by design.
+
+# Notes:
+#
+# Different databases may handle type combinations in different ways.
+# To resolve these, we can use:
+# - What Django did in the past, for compatibility
+# - What Python normally does
+# - What makes most sense
+
+# We should also note that currently `output_field` has limited scope
+# in what it affects:
+#
+# - it does not cause a database level CAST to be done (see ticket #26650)
+# - it controls conversion to Python data types, but that doesn't necessarily
+#   include validation, so some invalid values for the field may be returned.
+
+# Correct behaviour for `NoneType` is difficult to decide, due to different
+# database handling of NULL, but we base these on lowest common denominator
+# behaviour e.g. if one supported database is going to raise an error (rather
+# than return NULL) for `val <op> NULL`, then we should raise FieldError for
+# `annotate(field=value <op> None)`. We allow overriding using
+# `ExpressionWrapper(output_field=...)` if the user knows better.
+
+NoneType = type(None)
+
+_connector_combinations = [
+    # Numeric operations - operands of same type
+    {
+        connector: [
+            (fields.IntegerField, fields.IntegerField, fields.IntegerField),
+            (fields.FloatField, fields.FloatField, fields.FloatField),
+            (fields.DecimalField, fields.DecimalField, fields.DecimalField),
+        ]
+        for connector in (
+            Combinable.ADD,
+            Combinable.SUB,
+            Combinable.MUL,
+            # Behaviour for DIV with integer arguments follows Postgres/SQLite,
+            # not MySQL/Oracle
+            Combinable.DIV,
+            Combinable.MOD,
+            Combinable.POW,
+        )
+    },
+    # Numeric operations - operands of different type
+    {
+        connector: [
+            (fields.IntegerField, fields.DecimalField, fields.DecimalField),
+            (fields.DecimalField, fields.IntegerField, fields.DecimalField),
+            (fields.IntegerField, fields.FloatField, fields.FloatField),
+            (fields.FloatField, fields.IntegerField, fields.FloatField),
+        ]
+        for connector in (
+            Combinable.ADD,
+            Combinable.SUB,
+            Combinable.MUL,
+            Combinable.DIV,
+        )
+    },
+    # Bitwise operators
+    {
+        connector: [
+            (fields.IntegerField, fields.IntegerField, fields.IntegerField),
+        ]
+        for connector in (
+            Combinable.BITAND,
+            Combinable.BITOR,
+            Combinable.BITLEFTSHIFT,
+            Combinable.BITRIGHTSHIFT,
+            Combinable.BITXOR,
+        )
+    },
+    # Numeric with NULL
+    {
+        connector: [
+            (field_type, NoneType, field_type),
+            (NoneType, field_type, field_type),
+        ]
+        for connector in (
+            Combinable.ADD,
+            Combinable.SUB,
+            Combinable.MUL,
+            Combinable.DIV,
+            Combinable.MOD,
+            Combinable.POW,
+        )
+        for field_type in (
+            fields.IntegerField,
+            fields.DecimalField,
+            fields.FloatField,
+        )
+    },
+    # date/datetime:
+    {
+        Combinable.ADD: [
+            (lhs, fields.DurationField, fields.DateTimeField)
+            for lhs in (fields.DateField, fields.DateTimeField)
+        ]
+        + [
+            (fields.DurationField, rhs, fields.DateTimeField)
+            for rhs in (fields.DateField, fields.DateTimeField)
+        ]
+    },
+    {
+        Combinable.SUB: [
+            (lhs, fields.DurationField, fields.DateTimeField)
+            for lhs in (fields.DateField, fields.DateTimeField)
+        ]
+        + [
+            (lhs, rhs, fields.DurationField)
+            for lhs in (fields.DateField, fields.DateTimeField)
+            for rhs in (fields.DateField, fields.DateTimeField)
+        ]
+    },
+    # duration:
+    {
+        Combinable.ADD: [
+            (fields.DurationField, fields.DurationField, fields.DurationField),
+        ]
+    },
+    {
+        Combinable.SUB: [
+            (fields.DurationField, fields.DurationField, fields.DurationField),
+        ]
+    },
+    # time
+    {
+        Combinable.ADD: [
+            (fields.TimeField, fields.DurationField, fields.TimeField),
+            (fields.DurationField, fields.TimeField, fields.TimeField),
+        ]
+    },
+    {
+        Combinable.SUB: [
+            (fields.TimeField, fields.DurationField, fields.TimeField),
+            (fields.TimeField, fields.TimeField, fields.DurationField),
+        ]
+    },
+]
+
+_connector_combinators = defaultdict(list)
+
+
+def register_combinable_fields(lhs, connector, rhs, result):
+    """
+    Register combinable types:
+        lhs <connector> rhs -> result
+
+    e.g.
+        register_combinable_fields(
+            IntegerField, Combinable.ADD, IntegerField, IntegerField
+        )
+    """
+    _connector_combinators[connector].append((lhs, rhs, result))
+
+
+for d in _connector_combinations:
+    for connector, truples in d.items():
+        for lhs, rhs, result in truples:
+            register_combinable_fields(lhs, connector, rhs, result)
 
 
 @functools.lru_cache(maxsize=128)
@@ -507,17 +660,24 @@ class CombinedExpression(SQLiteNumericMixin, Expression):
         self.lhs, self.rhs = exprs
 
     def _resolve_output_field(self):
-        try:
-            return super()._resolve_output_field()
-        except FieldError:
-            combined_type = _resolve_combined_type(
-                self.connector,
-                type(self.lhs.output_field),
-                type(self.rhs.output_field),
+        # We avoid using super() here for reasons given in
+        # Expression._resolve_output_field()
+        combined_type = _resolve_combined_type(
+            self.connector,
+            type(self.lhs._output_field_or_none),
+            type(self.rhs._output_field_or_none),
+        )
+        if combined_type is None:
+            raise FieldError(
+                "Cannot infer type of `%s` expression involving these types: %s, %s. "
+                "You must set output_field."
+                % (
+                    self.connector,
+                    self.lhs.output_field.__class__.__name__,
+                    self.rhs.output_field.__class__.__name__,
+                )
             )
-            if combined_type is None:
-                raise
-            return combined_type()
+        return combined_type()
 
     def as_sql(self, compiler, connection):
         expressions = []

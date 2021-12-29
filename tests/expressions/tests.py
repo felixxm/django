@@ -1724,6 +1724,39 @@ class FTimeDeltaTests(TestCase):
             ]
             self.assertEqual(test_set, self.expnames[: i + 1])
 
+    def test_datetime_and_duration_field_addition_with_filter(self):
+        test_set = Experiment.objects.filter(end=F("start") + F("estimated_time"))
+        self.assertGreater(len(test_set), 0)
+        self.assertEqual(
+            [e.name for e in test_set],
+            [
+                e.name
+                for e in Experiment.objects.all()
+                if e.end == e.start + e.estimated_time
+            ],
+        )
+
+    def test_datetime_and_duration_field_addition_with_annotate_and_no_output_field(
+        self,
+    ):
+        test_set = Experiment.objects.annotate(
+            estimated_end=F("start") + F("estimated_time")
+        )
+        self.assertEqual(
+            [e.estimated_end for e in test_set],
+            [e.start + e.estimated_time for e in test_set],
+        )
+
+    @skipUnlessDBFeature("supports_temporal_subtraction")
+    def test_datetime_subtraction_with_annotate_and_without_output_field(self):
+        test_set = Experiment.objects.annotate(
+            calculated_duration=F("end") - F("start")
+        )
+        self.assertEqual(
+            [e.calculated_duration for e in test_set],
+            [e.end - e.start for e in test_set],
+        )
+
     def test_mixed_comparisons1(self):
         for i, delay in enumerate(self.delays):
             test_set = [
@@ -1839,6 +1872,15 @@ class FTimeDeltaTests(TestCase):
             qs = Experiment.objects.annotate(duration=F("estimated_time") + delta)
             for obj in qs:
                 self.assertEqual(obj.duration, obj.estimated_time + delta)
+
+    def test_nonsensical_date_operations_with_annotate(self):
+        queryset = Experiment.objects.annotate(nonsense=F("name") + F("assigned"))
+        with self.assertRaises(FieldError):
+            list(queryset)
+
+        queryset = Experiment.objects.annotate(nonsense=F("assigned") + F("completed"))
+        with self.assertRaises(FieldError):
+            list(queryset)
 
     @skipUnlessDBFeature("supports_temporal_subtraction")
     def test_date_subtraction(self):
@@ -2373,7 +2415,7 @@ class CombinableTests(SimpleTestCase):
 
 
 class CombinedExpressionTests(SimpleTestCase):
-    def test_resolve_output_field(self):
+    def test_resolve_output_field_numbers(self):
         tests = [
             (IntegerField, AutoField, IntegerField),
             (AutoField, IntegerField, IntegerField),
@@ -2393,6 +2435,53 @@ class CombinedExpressionTests(SimpleTestCase):
                         connector,
                         Expression(rhs()),
                     )
+                    self.assertIsInstance(expr.output_field, combined)
+
+    def test_resolve_output_field_dates(self):
+        def null():
+            return Value(None)
+
+        tests = [
+            # Add - same type
+            (DateField, Combinable.ADD, DateField, FieldError),
+            (DateTimeField, Combinable.ADD, DateTimeField, FieldError),
+            (TimeField, Combinable.ADD, TimeField, FieldError),
+            (DurationField, Combinable.ADD, DurationField, DurationField),
+            # Add - different type
+            (DateField, Combinable.ADD, DurationField, DateTimeField),
+            (DateTimeField, Combinable.ADD, DurationField, DateTimeField),
+            (TimeField, Combinable.ADD, DurationField, TimeField),
+            (DurationField, Combinable.ADD, DateField, DateTimeField),
+            (DurationField, Combinable.ADD, DateTimeField, DateTimeField),
+            (DurationField, Combinable.ADD, TimeField, TimeField),
+            # Subtract - same type
+            (DateField, Combinable.SUB, DateField, DurationField),
+            (DateTimeField, Combinable.SUB, DateTimeField, DurationField),
+            (TimeField, Combinable.SUB, TimeField, DurationField),
+            (DurationField, Combinable.SUB, DurationField, DurationField),
+            # Subtract - different type
+            (DateField, Combinable.SUB, DurationField, DateTimeField),
+            (DateTimeField, Combinable.SUB, DurationField, DateTimeField),
+            (TimeField, Combinable.SUB, DurationField, TimeField),
+            (DurationField, Combinable.SUB, DateField, FieldError),
+            (DurationField, Combinable.SUB, DateTimeField, FieldError),
+            (DurationField, Combinable.SUB, DateTimeField, FieldError),
+            # Nulls - a selection
+            (DateField, Combinable.SUB, null, FieldError),
+            (null, Combinable.ADD, DateTimeField, FieldError),
+            (DurationField, Combinable.ADD, null, FieldError),
+            (TimeField, Combinable.ADD, null, FieldError),
+        ]
+        for lhs, connector, rhs, combined in tests:
+            with self.subTest(lhs=lhs, connector=connector, rhs=rhs, combined=combined):
+                expr = CombinedExpression(
+                    Expression(lhs()),
+                    connector,
+                    Expression(rhs()),
+                )
+                if issubclass(combined, Exception):
+                    self.assertRaises(combined, lambda: expr.output_field)
+                else:
                     self.assertIsInstance(expr.output_field, combined)
 
 

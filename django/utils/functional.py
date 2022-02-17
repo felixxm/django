@@ -288,14 +288,19 @@ class LazyObject:
         self._wrapped = empty
 
     def __getattribute__(self, name):
-        value = super().__getattribute__(name)
-        # If attribute is a proxy method, raise an AttributeError to call
-        # __getattr__() and use the wrapped object method.
-        if not getattr(value, "_mask_wrapped", True):
-            raise AttributeError
+        __getattribute__ = super().__getattribute__
+        found = True
+        try:
+            value = __getattribute__(name)
+        except AttributeError:
+            found = False
+        # If attribute is a proxy method or it wasn't found, initialize the
+        # wrapped object and call its __getattr__().
+        if not found or not getattr(value, "_mask_wrapped", True):
+            if __getattribute__("_wrapped") is empty:
+                __getattribute__("_setup")()
+            return getattr(__getattribute__("_wrapped"), name)
         return value
-
-    __getattr__ = new_method_proxy(getattr)
 
     def __setattr__(self, name, value):
         if name == "_wrapped":

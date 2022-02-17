@@ -65,6 +65,14 @@ class LazyObjectTestCase(TestCase):
         self.assertEqual(obj.foo, "BAR")
         self.assertEqual(obj.bar, "baz")
 
+    def test_lazy_with_getattr_override(self):
+        class Thing:
+            def __getattr__(self, key):
+                return []
+
+        obj = self.lazy_wrap(Thing())
+        self.assertEqual(obj.main, [])
+
     def test_setattr2(self):
         # Same as test_setattr but in reversed order
         obj = self.lazy_wrap(Foo())

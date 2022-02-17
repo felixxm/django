@@ -299,7 +299,12 @@ class LazyObject:
         if not found or not getattr(value, "_mask_wrapped", True):
             if __getattribute__("_wrapped") is empty:
                 __getattribute__("_setup")()
-            return getattr(__getattribute__("_wrapped"), name)
+            try:
+                __getattr__ = __getattribute__("__getattr__")
+            except AttributeError:
+                return getattr(__getattribute__("_wrapped"), name)
+            else:
+                return __getattr__(name)
         return value
 
     def __setattr__(self, name, value):

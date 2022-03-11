@@ -2,7 +2,7 @@ name: Schedule
 
 on:
   schedule:
-    - cron: '42 2 * * *'
+    - cron: '57 8 * * *'
   workflow_dispatch:
 
 jobs:
@@ -11,7 +11,7 @@ jobs:
     environment: schedules
     name: Trigger Full Build
     # Only trigger on the main Django repository
-    if: (github.event_name == 'schedule' && github.repository == 'django/django') || (github.event_name != 'schedule')
+    # if: (github.event_name == 'schedule' && github.repository == 'django/django') || (github.event_name != 'schedule')
     strategy:
       matrix:
         branch:

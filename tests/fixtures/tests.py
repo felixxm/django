@@ -916,15 +916,10 @@ class FixtureLoadingTests(DumpDataAssertMixin, TestCase):
         with self.assertRaisesMessage(IntegrityError, msg):
             management.call_command("loaddata", "invalid.json", verbosity=0)
 
-    @unittest.skipUnless(
-        connection.vendor == "postgresql", "psycopg2 prohibits null characters in data."
-    )
+    @skipUnlessDBFeature("prohibits_null_characters_in_text_exception")
     def test_loaddata_null_characters_on_postgresql(self):
-        msg = (
-            "Could not load fixtures.Article(pk=2): "
-            "A string literal cannot contain NUL (0x00) characters."
-        )
-        with self.assertRaisesMessage(ValueError, msg):
+        error, pattern = connection.features.prohibits_null_characters_in_text_exception
+        with self.assertRaisesRegex(error, pattern):
             management.call_command("loaddata", "null_character_in_field_value.json")
 
     def test_loaddata_app_option(self):

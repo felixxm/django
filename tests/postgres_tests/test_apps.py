@@ -59,6 +59,9 @@ class PostgresConfigTests(TestCase):
                         MigrationWriter.serialize(field)
 
         assertNotSerializable()
+        import_name = (
+            "psycopg.types.range" if connection.is_psycopg3 else "psycopg2.extras"
+        )
         with self.modify_settings(INSTALLED_APPS={"append": "django.contrib.postgres"}):
             for default, test_field in tests:
                 with self.subTest(default=default):
@@ -68,11 +71,11 @@ class PostgresConfigTests(TestCase):
                         imports,
                         {
                             "import django.contrib.postgres.fields.ranges",
-                            "import psycopg2.extras",
+                            f"import {import_name}",
                         },
                     )
                     self.assertIn(
-                        "%s.%s(default=psycopg2.extras.%r)"
+                        f"%s.%s(default={import_name}.%r)"
                         % (
                             field.__module__,
                             field.__class__.__name__,

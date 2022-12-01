@@ -1,13 +1,13 @@
 """
 PostgreSQL database backend for Django.
 
-Requires psycopg 2: https://www.psycopg.org/
+Requires psycopg2 >= 2.8.4 or psycopg3 >= 3.1
 """
-
 import asyncio
 import threading
 import warnings
 from contextlib import contextmanager
+from functools import lru_cache
 
 from django.conf import settings
 from django.core.exceptions import ImproperlyConfigured
@@ -21,48 +21,89 @@ from django.utils.safestring import SafeString
 from django.utils.version import get_version_tuple
 
 try:
-    import psycopg2 as Database
-    import psycopg2.extensions
-    import psycopg2.extras
-except ImportError as e:
-    raise ImproperlyConfigured("Error loading psycopg2 module: %s" % e)
+    try:
+        import psycopg as Database
+    except ImportError:
+        import psycopg2 as Database
+except ImportError:
+    raise ImproperlyConfigured("Error loading psycopg2 or psycopg module")
 
 
-def psycopg2_version():
-    version = psycopg2.__version__.split(" ", 1)[0]
+def psycopg_version():
+    version = Database.__version__.split(" ", 1)[0]
     return get_version_tuple(version)
 
 
-PSYCOPG2_VERSION = psycopg2_version()
-
-if PSYCOPG2_VERSION < (2, 8, 4):
+if psycopg_version() < (2, 8, 4):
     raise ImproperlyConfigured(
-        "psycopg2 version 2.8.4 or newer is required; you have %s"
-        % psycopg2.__version__
+        f"psycopg2 version 2.8.4 or newer is required; you have {Database.__version__}"
+    )
+if (3,) <= psycopg_version() < (3, 1):
+    raise ImproperlyConfigured(
+        f"psycopg version 3.1 or newer is required; you have {Database.__version__}"
     )
 
 
-# Some of these import psycopg2, so import them after checking if it's installed.
-from .client import DatabaseClient  # NOQA
-from .creation import DatabaseCreation  # NOQA
-from .features import DatabaseFeatures  # NOQA
-from .introspection import DatabaseIntrospection  # NOQA
-from .operations import DatabaseOperations  # NOQA
-from .psycopg_any import IsolationLevel  # NOQA
-from .schema import DatabaseSchemaEditor  # NOQA
+from .psycopg_any import IsolationLevel, is_psycopg3  # NOQA isort:skip
 
-psycopg2.extensions.register_adapter(SafeString, psycopg2.extensions.QuotedString)
-psycopg2.extras.register_uuid()
+if is_psycopg3:
+    import psycopg
+    from psycopg import sql
+    from psycopg.pq import Format
+    from psycopg.types.datetime import TimestamptzLoader
+    from psycopg.types.range import Range, RangeDumper
+    from psycopg.types.string import TextLoader
 
-# Register support for inet[] manually so we don't have to handle the Inet()
-# object on load all the time.
-INETARRAY_OID = 1041
-INETARRAY = psycopg2.extensions.new_array_type(
-    (INETARRAY_OID,),
-    "INETARRAY",
-    psycopg2.extensions.UNICODE,
-)
-psycopg2.extensions.register_type(INETARRAY)
+    TIMESTAMPTZ_OID = psycopg.adapters.types["timestamptz"].oid
+    TSRANGE_OID = psycopg.postgres.types["tsrange"].oid
+    TSTZRANGE_OID = psycopg.postgres.types["tstzrange"].oid
+
+else:
+    import psycopg2.extensions
+    import psycopg2.extras
+
+    psycopg2.extensions.register_adapter(SafeString, psycopg2.extensions.QuotedString)
+    psycopg2.extras.register_uuid()
+
+    # Register support for inet[] manually so we don't have to handle the Inet()
+    # object on load all the time.
+    INETARRAY_OID = 1041
+    INETARRAY = psycopg2.extensions.new_array_type(
+        (INETARRAY_OID,),
+        "INETARRAY",
+        psycopg2.extensions.UNICODE,
+    )
+    psycopg2.extensions.register_type(INETARRAY)
+
+# Some of these import psycopg, so import them after checking if it's installed.
+from .client import DatabaseClient  # NOQA isort:skip
+from .creation import DatabaseCreation  # NOQA isort:skip
+from .features import DatabaseFeatures  # NOQA isort:skip
+from .introspection import DatabaseIntrospection  # NOQA isort:skip
+from .operations import DatabaseOperations  # NOQA isort:skip
+from .schema import DatabaseSchemaEditor  # NOQA isort:skip
+
+
+@lru_cache
+def get_adapters_template(use_tz, timezone):
+    # Create at adapters map extending the base one to base connections on
+    ctx = psycopg.adapt.AdaptersMap(psycopg.adapters)
+
+    # Register a no-op dumper to avoid a round trip from psycopg version 3
+    # decode to json.dumps() to json.loads(), when using a custom decoder
+    # in JSONField.
+    ctx.register_loader("jsonb", TextLoader)
+
+    # Don't convert automatically from Postgres network types to Python ipaddress
+    ctx.register_loader("inet", TextLoader)
+    ctx.register_loader("cidr", TextLoader)
+    ctx.register_dumper(Range, DjangoRangeDumper)
+
+    # Register a timestamptz loader configured on self.timezone.
+    # This, however, can be overridden by create_cursor.
+    register_tzloader(timezone, ctx)
+
+    return ctx
 
 
 class DatabaseWrapper(BaseDatabaseWrapper):
@@ -159,6 +200,11 @@ class DatabaseWrapper(BaseDatabaseWrapper):
     # PostgreSQL backend-specific attributes.
     _named_cursor_idx = 0
 
+    # Map the initial connection state
+    ctx_templates = {}
+
+    is_psycopg3 = is_psycopg3
+
     def get_database_version(self):
         """
         Return a tuple of the database's version.
@@ -211,6 +257,39 @@ class DatabaseWrapper(BaseDatabaseWrapper):
             conn_params["port"] = settings_dict["PORT"]
         return conn_params
 
+    if is_psycopg3:
+
+        def _get_new_connection(self, conn_params):
+            ctx = get_adapters_template(settings.USE_TZ, self.timezone)
+            # Disable prepared statements by default to keep connection poolers
+            # working. Can be reenabled via OPTIONS in the settings dict.
+            prepare_threshold = conn_params.pop("prepare_threshold", None)
+            return self.Database.connect(
+                **conn_params, prepare_threshold=prepare_threshold, context=ctx
+            )
+
+        def _configure_cursor(self, cursor):
+            # Register the cursor timezone only if the connection disagrees, to
+            # avoid copying the adapter map.
+            tzloader = self.connection.adapters.get_loader(TIMESTAMPTZ_OID, Format.TEXT)
+            if self.timezone != tzloader.timezone:
+                register_tzloader(self.timezone, cursor)
+
+    else:
+
+        def _get_new_connection(self, conn_params):
+            connection = self.Database.connect(**conn_params)
+            # Register dummy loads() to avoid a round trip from psycopg2's decode
+            # to json.dumps() to json.loads(), when using a custom decoder in
+            # JSONField.
+            psycopg2.extras.register_default_jsonb(
+                conn_or_curs=connection, loads=lambda x: x
+            )
+            return connection
+
+        def _configure_cursor(self, cursor):
+            cursor.tzinfo_factory = self.tzinfo_factory if settings.USE_TZ else None
+
     @async_unsafe
     def get_new_connection(self, conn_params):
         # self.isolation_level must be set:
@@ -232,17 +311,12 @@ class DatabaseWrapper(BaseDatabaseWrapper):
             except ValueError:
                 raise ImproperlyConfigured(
                     f"Invalid transaction isolation level {isolation_level_value} "
-                    f"specified. Use one of the IsolationLevel values."
+                    f"specified. Use one of the psycopg.IsolationLevel values."
                 )
-        connection = Database.connect(**conn_params)
+        connection = self._get_new_connection(conn_params)
         if set_isolation_level:
             connection.isolation_level = self.isolation_level
-        # Register dummy loads() to avoid a round trip from psycopg2's decode
-        # to json.dumps() to json.loads(), when using a custom decoder in
-        # JSONField.
-        psycopg2.extras.register_default_jsonb(
-            conn_or_curs=connection, loads=lambda x: x
-        )
+        connection.cursor_factory = Cursor
         return connection
 
     def ensure_timezone(self):
@@ -275,7 +349,8 @@ class DatabaseWrapper(BaseDatabaseWrapper):
             )
         else:
             cursor = self.connection.cursor()
-        cursor.tzinfo_factory = self.tzinfo_factory if settings.USE_TZ else None
+
+        self._configure_cursor(cursor)
         return cursor
 
     def tzinfo_factory(self, offset):
@@ -379,11 +454,75 @@ class DatabaseWrapper(BaseDatabaseWrapper):
         return CursorDebugWrapper(cursor, self)
 
 
-class CursorDebugWrapper(BaseCursorDebugWrapper):
-    def copy_expert(self, sql, file, *args):
-        with self.debug_sql(sql):
-            return self.cursor.copy_expert(sql, file, *args)
+if is_psycopg3:
 
-    def copy_to(self, file, table, *args, **kwargs):
-        with self.debug_sql(sql="COPY %s TO STDOUT" % table):
-            return self.cursor.copy_to(file, table, *args, **kwargs)
+    class BaseTzLoader(TimestamptzLoader):
+        """
+        Load a Postgres timestamptz using the a specific timezone.
+
+        The timezone can be None too, in which case it will be chopped.
+        """
+
+        timezone = None
+
+        def load(self, data):
+            res = super().load(data)
+            return res.replace(tzinfo=self.timezone)
+
+    def register_tzloader(tz, context):
+        class SpecificTzLoader(BaseTzLoader):
+            timezone = tz
+
+        context.adapters.register_loader("timestamptz", SpecificTzLoader)
+
+    class DjangoRangeDumper(RangeDumper):
+        """
+        A Range dumper customized for Django.
+        """
+
+        def upgrade(self, obj, format):
+            # Dump ranges containing naive datetimes as tstzrange, because Django
+            # doesn't use tz-aware ones.
+            dumper = super().upgrade(obj, format)
+            if dumper is not self and dumper.oid == TSRANGE_OID:
+                dumper.oid = TSTZRANGE_OID
+            return dumper
+
+    class Cursor(Database.Cursor):
+        """
+        A subclass of psycopg cursor implementing callproc.
+        """
+
+        def callproc(self, name, args=None):
+            if not isinstance(name, sql.Identifier):
+                name = sql.Identifier(name)
+
+            qparts = [sql.SQL("select * from "), name, sql.SQL("(")]
+            if args:
+                for item in args:
+                    qparts.append(sql.Literal(item))
+                    qparts.append(sql.SQL(","))
+                del qparts[-1]
+
+            qparts.append(sql.SQL(")"))
+            stmt = sql.Composed(qparts)
+            self.execute(stmt)
+            return args
+
+    class CursorDebugWrapper(BaseCursorDebugWrapper):
+        def copy(self, statement):
+            with self.debug_sql(statement):
+                return self.cursor.copy(statement)
+
+else:
+
+    Cursor = psycopg2.extensions.cursor
+
+    class CursorDebugWrapper(BaseCursorDebugWrapper):
+        def copy_expert(self, sql, file, *args):
+            with self.debug_sql(sql):
+                return self.cursor.copy_expert(sql, file, *args)
+
+        def copy_to(self, file, table, *args, **kwargs):
+            with self.debug_sql(sql="COPY %s TO STDOUT" % table):
+                return self.cursor.copy_to(file, table, *args, **kwargs)

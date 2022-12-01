@@ -1,31 +1,47 @@
-from enum import IntEnum
+import ipaddress
 
-from psycopg2 import errors, extensions, sql  # NOQA
-from psycopg2.extras import DateRange, DateTimeRange, DateTimeTZRange, Inet  # NOQA
-from psycopg2.extras import Json as Jsonb  # NOQA
-from psycopg2.extras import NumericRange, Range  # NOQA
+try:
+    from psycopg import ClientCursor, IsolationLevel, errors, sql
+    from psycopg.types.json import Jsonb
+    from psycopg.types.range import Range
 
-RANGE_TYPES = (DateRange, DateTimeRange, DateTimeTZRange, NumericRange)
+    Inet = ipaddress.ip_address
 
+    DateRange = DateTimeRange = DateTimeTZRange = NumericRange = Range
+    RANGE_TYPES = (Range,)
 
-class IsolationLevel(IntEnum):
-    READ_UNCOMMITTED = extensions.ISOLATION_LEVEL_READ_UNCOMMITTED
-    READ_COMMITTED = extensions.ISOLATION_LEVEL_READ_COMMITTED
-    REPEATABLE_READ = extensions.ISOLATION_LEVEL_REPEATABLE_READ
-    SERIALIZABLE = extensions.ISOLATION_LEVEL_SERIALIZABLE
+    def mogrify(sql, params, connection):
+        return ClientCursor(connection.connection).mogrify(sql, params)
 
+    is_psycopg3 = True
 
-def _quote(value, connection=None):
-    adapted = extensions.adapt(value)
-    if hasattr(adapted, "encoding"):
-        adapted.encoding = "utf8"
-    # getquoted() returns a quoted bytestring of the adapted value.
-    return adapted.getquoted().decode()
+except ImportError:
+    from enum import IntEnum
 
+    from psycopg2 import errors, extensions, sql  # NOQA
+    from psycopg2.extras import DateRange, DateTimeRange, DateTimeTZRange, Inet  # NOQA
+    from psycopg2.extras import Json as Jsonb  # NOQA
+    from psycopg2.extras import NumericRange, Range  # NOQA
 
-sql.quote = _quote
+    RANGE_TYPES = (DateRange, DateTimeRange, DateTimeTZRange, NumericRange)
 
+    class IsolationLevel(IntEnum):
+        READ_UNCOMMITTED = extensions.ISOLATION_LEVEL_READ_UNCOMMITTED
+        READ_COMMITTED = extensions.ISOLATION_LEVEL_READ_COMMITTED
+        REPEATABLE_READ = extensions.ISOLATION_LEVEL_REPEATABLE_READ
+        SERIALIZABLE = extensions.ISOLATION_LEVEL_SERIALIZABLE
 
-def mogrify(sql, params, connection):
-    with connection.cursor() as cursor:
-        return cursor.mogrify(sql, params).decode()
+    def _quote(value, connection=None):
+        adapted = extensions.adapt(value)
+        if hasattr(adapted, "encoding"):
+            adapted.encoding = "utf8"
+        # getquoted() returns a quoted bytestring of the adapted value.
+        return adapted.getquoted().decode()
+
+    sql.quote = _quote
+
+    def mogrify(sql, params, connection):
+        with connection.cursor() as cursor:
+            return cursor.mogrify(sql, params).decode()
+
+    is_psycopg3 = False

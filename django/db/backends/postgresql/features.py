@@ -1,6 +1,6 @@
 import operator
 
-from django.db import InterfaceError
+from django.db import DataError, InterfaceError
 from django.db.backends.base.features import BaseDatabaseFeatures
 from django.utils.functional import cached_property
 
@@ -26,6 +26,7 @@ class DatabaseFeatures(BaseDatabaseFeatures):
     can_introspect_materialized_views = True
     can_distinct_on_fields = True
     can_rollback_ddl = True
+    schema_editor_uses_clientside_param_binding = True
     supports_combined_alters = True
     nulls_order_largest = True
     closed_cursor_error_class = InterfaceError
@@ -73,6 +74,13 @@ class DatabaseFeatures(BaseDatabaseFeatures):
         "swedish_ci": "sv-x-icu",
     }
     test_now_utc_template = "STATEMENT_TIMESTAMP() AT TIME ZONE 'UTC'"
+
+    @cached_property
+    def prohibits_null_characters_in_text_exception(self):
+        return (
+            DataError if self.connection.is_psycop3 else ValueError,
+            r"Could not load fixtures\.Article\(pk=2\): .*\(0x00\)",
+        )
 
     django_test_skips = {
         "opclasses are PostgreSQL only.": {

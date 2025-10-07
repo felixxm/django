@@ -1,6 +1,6 @@
 from math import ceil
 
-from django.db import connection, models
+from django.db import IntegrityError, connection, models, transaction
 from django.db.models import ProtectedError, Q, RestrictedError
 from django.db.models.deletion import Collector
 from django.db.models.sql.constants import GET_ITERATOR_CHUNK_SIZE
@@ -34,8 +34,12 @@ from .models import (
     RChild,
     RChildChild,
     Referrer,
+    RelatedDb,
+    RelatedDeepDb,
+    RelatedDeeperDb,
     RProxy,
     S,
+    SetDefaultDb,
     T,
     User,
     create_a,
@@ -76,17 +80,45 @@ class OnDeleteTests(TestCase):
         a = A.objects.get(pk=a.pk)
         self.assertIsNone(a.setnull)
 
+    def test_db_setnull(self):
+        a = create_a("db_setnull")
+        a.db_setnull.delete()
+        a = A.objects.get(pk=a.pk)
+        self.assertIsNone(a.db_setnull)
+
     def test_setdefault(self):
         a = create_a("setdefault")
         a.setdefault.delete()
         a = A.objects.get(pk=a.pk)
         self.assertEqual(self.DEFAULT, a.setdefault.pk)
 
+    @skipUnlessDBFeature("supports_on_delete_db_default")
+    def test_db_setdefault(self):
+        # Object cannot be created on the module initialization, use hardcoded
+        # PKs instead.
+        R.objects.all().delete()
+        r = R.objects.create(pk=2)
+        default_r = R.objects.create(pk=1)
+        set_default_db_obj = SetDefaultDb.objects.create(db_setdefault=r)
+        set_default_db_obj.db_setdefault.delete()
+        set_default_db_obj = SetDefaultDb.objects.get(pk=set_default_db_obj.pk)
+        self.assertEqual(set_default_db_obj.db_setdefault, default_r)
+
     def test_setdefault_none(self):
         a = create_a("setdefault_none")
         a.setdefault_none.delete()
         a = A.objects.get(pk=a.pk)
         self.assertIsNone(a.setdefault_none)
+
+    @skipUnlessDBFeature("supports_on_delete_db_default")
+    def test_db_setdefault_none(self):
+        R.objects.all().delete()
+        r = R.objects.create(pk=2)
+        default_r = R.objects.create(pk=1)
+        set_default_db_obj = SetDefaultDb.objects.create(db_setdefault_none=r, db_setdefault=default_r)
+        set_default_db_obj.db_setdefault_none.delete()
+        set_default_db_obj = SetDefaultDb.objects.get(pk=set_default_db_obj.pk)
+        self.assertIsNone(set_default_db_obj.db_setdefault_none)
 
     def test_cascade(self):
         a = create_a("cascade")
@@ -304,6 +336,39 @@ class OnDeleteTests(TestCase):
         self.assertFalse(GenericB2.objects.exists())
         self.assertFalse(GenericDeleteBottom.objects.exists())
 
+    def test_db_restrict(self):
+        a = create_a("db_restrict")
+        with self.assertRaises(IntegrityError), transaction.atomic():
+            a.db_restrict.delete()
+
+    def test_db_restrict_cascade_direct(self):
+        a = create_a("db_restrict")
+        a.cascade = a.db_restrict
+        a.save()
+        a.db_restrict.delete()
+        self.assertFalse(A.objects.filter(name="db_restrict").exists())
+        self.assertFalse(R.objects.filter(pk=a.db_restrict_id).exists())
+
+    def test_db_restrict_path_db_cascade_direct(self):
+        a = create_a("db_restrict")
+        a.db_restrict.p = P.objects.create()
+        a.db_restrict.save()
+        a.db_cascade_p = a.db_restrict.p
+        a.save()
+        a.db_restrict.p.delete()
+        self.assertFalse(A.objects.filter(name="db_restrict").exists())
+        self.assertFalse(R.objects.filter(pk=a.db_restrict_id).exists())
+
+    def test_db_restrict_path_cascade_direct(self):
+        a = create_a("db_restrict")
+        a.db_restrict.p = P.objects.create()
+        a.db_restrict.save()
+        a.cascade_p = a.db_restrict.p
+        a.save()
+        a.db_restrict.p.delete()
+        self.assertFalse(A.objects.filter(name="db_restrict").exists())
+        self.assertFalse(R.objects.filter(pk=a.db_restrict_id).exists())
+
 
 class DeletionTests(TestCase):
     def test_sliced_queryset(self):
@@ -358,6 +423,20 @@ class DeletionTests(TestCase):
         # + 1 (delete `s`)
         self.assertNumQueries(5, s.delete)
         self.assertFalse(S.objects.exists())
+
+    def test_db_cascade(self):
+        related_db = RelatedDb.objects.create(r=R.objects.create())
+        RelatedDeepDb.objects.bulk_create(
+            [
+                RelatedDeepDb(related_db=related_db)
+                for _ in range(2 * GET_ITERATOR_CHUNK_SIZE)
+            ]
+        )
+        RelatedDeeperDb.objects.create(related_deep_db=RelatedDeepDb.objects.first())
+        self.assertNumQueries(1, related_db.delete)
+        self.assertFalse(RelatedDb.objects.exists())
+        self.assertFalse(RelatedDeepDb.objects.exists())
+        self.assertFalse(RelatedDeeperDb.objects.exists())
 
     def test_instance_update(self):
         deleted = []

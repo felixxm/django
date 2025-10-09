@@ -2348,3 +2348,57 @@ class DatabaseLevelOnDeleteTests(TestCase):
                 )
             ],
         )
+
+    def test_python_db_chain(self):
+        class GrandParent(models.Model):
+            pass
+
+        class Parent(models.Model):
+            grand_parent = models.ForeignKey(GrandParent, models.DB_CASCADE)
+
+        class Child(models.Model):
+            parent = models.ForeignKey(Parent, models.RESTRICT)
+
+        field = Child._meta.get_field("parent")
+        self.assertEqual(
+            field.check(databases=self.databases),
+            [
+                Error(
+                    "Field specifies python-level on_delete variant, but referenced "
+                    "model uses database-level variant.",
+                    hint=(
+                        "Use constantly database or python on_delete variants in the "
+                        "references chain."
+                    ),
+                    obj=field,
+                    id="fields.E323",
+                )
+            ],
+        )
+
+    def test_db_python_chain(self):
+        class GrandParent(models.Model):
+            pass
+
+        class Parent(models.Model):
+            grand_parent = models.ForeignKey(GrandParent, models.CASCADE)
+
+        class Child(models.Model):
+            parent = models.ForeignKey(Parent, models.DB_RESTRICT)
+
+        field = Child._meta.get_field("parent")
+        self.assertEqual(
+            field.check(databases=self.databases),
+            [
+                Error(
+                    "Field specifies database-level on_delete variant, but referenced "
+                    "model uses python-level variant.",
+                    hint=(
+                        "Use constantly database or python on_delete variants in the "
+                        "references chain."
+                    ),
+                    obj=field,
+                    id="fields.E323",
+                )
+            ],
+        )

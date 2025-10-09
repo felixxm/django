@@ -1132,19 +1132,38 @@ class ForeignKey(ForeignObject):
                     id="fields.E324",
                 )
             )
-        elif related_model_field := self._has_related_models_with_db_cascading(
-            self.model, on_delete
-        ):
-            errors.append(
-                checks.Error(
-                    "Using python based on_delete with database level "
-                    "on_delete referenced model is prohibited. "
-                    f"Related field is {related_model_field}.",
-                    hint="Use database-level cascading for foreign keys.",
-                    obj=self,
-                    id="fields.E323",
-                )
+        elif not isinstance(self.remote_field.model, str):
+            # Database and Python variants cannot be mixed in a chain of
+            # model references.
+            is_db_on_delete = isinstance(on_delete, DatabaseOnDelete)
+            ref_model_related_fields = (
+                ref_model_field.remote_field
+                for ref_model_field in self.remote_field.model._meta.get_fields()
+                if ref_model_field.related_model and not ref_model_field.auto_created
             )
+
+            for ref_remote_field in ref_model_related_fields:
+                if (
+                    ref_remote_field.on_delete is not None
+                    and isinstance(ref_remote_field.on_delete, DatabaseOnDelete)
+                    is not is_db_on_delete
+                ):
+                    on_delete_type = "database" if is_db_on_delete else "python"
+                    ref_on_delete_type = "python" if is_db_on_delete else "database"
+                    errors.append(
+                        checks.Error(
+                            f"Field specifies {on_delete_type}-level on_delete "
+                            "variant, but referenced model uses "
+                            f"{ref_on_delete_type}-level variant.",
+                            hint=(
+                                "Use constantly database or python on_delete variants "
+                                "in the references chain."
+                            ),
+                            obj=self,
+                            id="fields.E323",
+                        )
+                    )
+                    break
         return errors
 
     def _check_unique(self, **kwargs):
@@ -1164,39 +1183,6 @@ class ForeignKey(ForeignObject):
             if self.unique
             else []
         )
-
-    @classmethod
-    def _has_related_models_with_db_cascading(cls, model, on_delete):
-        """
-        If the ForeignKey parent has DB cascading and the Current model has non
-        db cascading return true
-        """
-        # Optimization for the case when the model does not have non-db
-        # deletion.
-        if isinstance(on_delete, DatabaseOnDelete):
-            return None
-        # Fetch all the models related to the current model
-        # In other words fetch all the ForeignKey childs.
-        related_models = [
-            rel.related_model
-            for rel in model._meta.get_fields()
-            if rel.related_model
-            and not rel.auto_created
-            and hasattr(rel.related_model, "_meta")
-        ]
-        for rel_model in related_models:
-            # Check through the related models. If they have database level
-            # deletion, return True.
-            for rel in rel_model._meta.get_fields():
-                if isinstance(rel, OneToOneRel) and isinstance(
-                    rel.on_delete, DatabaseOnDelete
-                ):
-                    return rel.remote_field
-                elif (isinstance(rel, (ForeignKey, OneToOneField))) and isinstance(
-                    getattr(rel.remote_field, "on_delete", None), DatabaseOnDelete
-                ):
-                    return rel
-        return None
 
     def deconstruct(self):
         name, path, args, kwargs = super().deconstruct()

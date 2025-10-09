@@ -28,18 +28,6 @@ class U(models.Model):
     t = models.ForeignKey(T, models.CASCADE)
 
 
-class RelatedDb(models.Model):
-    r = models.ForeignKey(R, models.DB_CASCADE)
-
-
-class RelatedDeepDb(models.Model):
-    related_db = models.ForeignKey(RelatedDb, models.DB_CASCADE)
-
-
-class RelatedDeeperDb(models.Model):
-    related_deep_db = models.ForeignKey(RelatedDeepDb, models.DB_CASCADE)
-
-
 class RChild(R):
     pass
 
@@ -103,6 +91,18 @@ class SetDefaultDb(models.Model):
 
     class Meta:
         required_db_features = {"supports_on_delete_db_default"}
+
+
+class RelatedDb(models.Model):
+    r = models.ForeignKey(RelatedDbOptionParent, models.DB_CASCADE)
+
+
+class RelatedDeepDb(models.Model):
+    related_db = models.ForeignKey(RelatedDb, models.DB_CASCADE)
+
+
+class RelatedDeeperDb(models.Model):
+    related_deep_db = models.ForeignKey(RelatedDeepDb, models.DB_CASCADE)
 
 
 class A(models.Model):

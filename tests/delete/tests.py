@@ -427,7 +427,7 @@ class DeletionTests(TestCase):
         self.assertFalse(S.objects.exists())
 
     def test_db_cascade(self):
-        related_db = RelatedDb.objects.create(r=R.objects.create())
+        related_db = RelatedDb.objects.create(r=RelatedDbOptionParent.objects.create())
         RelatedDeepDb.objects.bulk_create(
             [
                 RelatedDeepDb(related_db=related_db)

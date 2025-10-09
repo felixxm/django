@@ -1723,7 +1723,7 @@ relation works.
 
 .. versionchanged:: 6.1
 
-    Support for ``DB_*`` variants of ``on_delete`` attribute was added.
+    Support for ``DB_*`` variants of the ``on_delete`` attribute was added.
 
 The possible values for :attr:`~ForeignKey.on_delete` are found in
 :mod:`django.db.models`:
@@ -1745,33 +1745,6 @@ The possible values for :attr:`~ForeignKey.on_delete` are found in
 
     Cascade deletes. Database-level version of :attr:`CASCADE`: the database
     deletes referred-to rows and the one containing the ``ForeignKey``.
-
-* .. attribute:: DB_RESTRICT
-
-    .. versionadded:: 6.1
-
-    Prevent deletion of the referenced object by raising
-    :class:`~django.db.IntegrityError`. Database-level version of
-    :attr:`RESTRICT`.
-
-* .. attribute:: DB_SET_NULL
-
-    .. versionadded:: 6.1
-
-    Set the :class:`ForeignKey` value to ``null``; this is only possible if
-    :attr:`~Field.null` is ``True``. Database-level version of
-    :attr:`SET_NULL`.
-
-* .. attribute:: DB_SET_DEFAULT
-
-    .. versionadded:: 6.1
-
-    Set the :class:`ForeignKey` value to its :attr:`Field.db_default` value,
-    which must be set. If a row in the referenced table is deleted, the foreign
-    key values in the referencing table will be updated to their
-    :attr:`Field.db_default` values.
-
-    ``DB_SET_DEFAULT`` is not supported on MySQL and MariaDB.
 
 * .. attribute:: PROTECT
 
@@ -1821,15 +1794,42 @@ The possible values for :attr:`~ForeignKey.on_delete` are found in
         >>> artist_one.delete()
         (4, {'Song': 2, 'Album': 1, 'Artist': 1})
 
+* .. attribute:: DB_RESTRICT
+
+    .. versionadded:: 6.1
+
+    Prevent deletion of the referenced object by raising
+    :class:`~django.db.IntegrityError`. Database-level version of
+    :attr:`RESTRICT`.
+
 * .. attribute:: SET_NULL
 
     Set the :class:`ForeignKey` null; this is only possible if
     :attr:`~Field.null` is ``True``.
 
+* .. attribute:: DB_SET_NULL
+
+    .. versionadded:: 6.1
+
+    Set the :class:`ForeignKey` value to ``NULL``. This is only possible if
+    :attr:`~Field.null` is ``True``. Database-level version of
+    :attr:`SET_NULL`.
+
 * .. attribute:: SET_DEFAULT
 
     Set the :class:`ForeignKey` to its default value; a default for the
     :class:`ForeignKey` must be set.
+
+* .. attribute:: DB_SET_DEFAULT
+
+    .. versionadded:: 6.1
+
+    Set the :class:`ForeignKey` value to its :attr:`Field.db_default` value,
+    which must be set. If a row in the referenced table is deleted, the foreign
+    key values in the referencing table will be updated to their
+    :attr:`Field.db_default` values.
+
+    ``DB_SET_DEFAULT`` is not supported on MySQL and MariaDB.
 
 * .. function:: SET()
 

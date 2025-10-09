@@ -1102,7 +1102,8 @@ class ForeignKey(ForeignObject):
                 ):
                     errors.append(
                         checks.Error(
-                            f"{connection.display_name} does not support a DB_SET_DEFAULT.",
+                            f"{connection.display_name} does not support a "
+                            "DB_SET_DEFAULT.",
                             hint="Change the on_delete rule to SET_DEFAULT.",
                             obj=self,
                             id="fields.E325",

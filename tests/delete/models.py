@@ -40,25 +40,6 @@ class RelatedDeeperDb(models.Model):
     related_deep_db = models.ForeignKey(RelatedDeepDb, models.DB_CASCADE)
 
 
-class SetDefaultDb(models.Model):
-    db_setdefault = models.ForeignKey(
-        R,
-        models.DB_SET_DEFAULT,
-        db_default=models.Value(1),
-        related_name="db_setdefault_set",
-    )
-    db_setdefault_none = models.ForeignKey(
-        R,
-        models.DB_SET_DEFAULT,
-        db_default=None,
-        null=True,
-        related_name="db_setnull_nullable_set",
-    )
-
-    class Meta:
-        required_db_features = {"supports_on_delete_db_default"}
-
-
 class RChild(R):
     pass
 
@@ -72,6 +53,58 @@ class RChildChild(RChild):
     pass
 
 
+class RelatedDbOptionGrandParent(models.Model):
+    pass
+
+
+class RelatedDbOptionParent(models.Model):
+    p = models.ForeignKey(RelatedDbOptionGrandParent, models.DB_CASCADE, null=True)
+
+
+class RelatedDbOption(models.Model):
+    name = models.CharField(max_length=30)
+    db_setnull = models.ForeignKey(
+        RelatedDbOptionParent,
+        models.DB_SET_NULL,
+        null=True,
+        related_name="db_setnull_set",
+    )
+    db_cascade = models.ForeignKey(
+        RelatedDbOptionParent, models.DB_CASCADE, related_name="db_cascade_set"
+    )
+    db_restrict = models.ForeignKey(
+        RelatedDbOptionParent,
+        models.DB_RESTRICT,
+        null=True,
+        related_name="db_restrict_set",
+    )
+    db_cascade_p = models.ForeignKey(
+        RelatedDbOptionGrandParent,
+        models.DB_CASCADE,
+        related_name="db_cascade_p_set",
+        null=True,
+    )
+
+
+class SetDefaultDb(models.Model):
+    db_setdefault = models.ForeignKey(
+        RelatedDbOptionParent,
+        models.DB_SET_DEFAULT,
+        db_default=models.Value(1),
+        related_name="db_setdefault_set",
+    )
+    db_setdefault_none = models.ForeignKey(
+        RelatedDbOptionParent,
+        models.DB_SET_DEFAULT,
+        db_default=None,
+        null=True,
+        related_name="db_setnull_nullable_set",
+    )
+
+    class Meta:
+        required_db_features = {"supports_on_delete_db_default"}
+
+
 class A(models.Model):
     name = models.CharField(max_length=30)
 
@@ -82,9 +115,6 @@ class A(models.Model):
     setvalue = models.ForeignKey(R, models.SET(get_default_r), related_name="setvalue")
     setnull = models.ForeignKey(
         R, models.SET_NULL, null=True, related_name="setnull_set"
-    )
-    db_setnull = models.ForeignKey(
-        R, models.DB_SET_NULL, null=True, related_name="db_setnull_set"
     )
     setdefault = models.ForeignKey(
         R, models.SET_DEFAULT, default=get_default_r, related_name="setdefault_set"
@@ -97,7 +127,6 @@ class A(models.Model):
         related_name="setnull_nullable_set",
     )
     cascade = models.ForeignKey(R, models.CASCADE, related_name="cascade_set")
-    db_cascade = models.ForeignKey(R, models.DB_CASCADE, related_name="db_cascade_set")
     cascade_nullable = models.ForeignKey(
         R, models.CASCADE, null=True, related_name="cascade_nullable_set"
     )
@@ -106,9 +135,6 @@ class A(models.Model):
     )
     restrict = models.ForeignKey(
         R, models.RESTRICT, null=True, related_name="restrict_set"
-    )
-    db_restrict = models.ForeignKey(
-        R, models.DB_RESTRICT, null=True, related_name="db_restrict_set"
     )
     donothing = models.ForeignKey(
         R, models.DO_NOTHING, null=True, related_name="donothing_set"
@@ -119,9 +145,6 @@ class A(models.Model):
     )
     cascade_p = models.ForeignKey(
         P, models.CASCADE, related_name="cascade_p_set", null=True
-    )
-    db_cascade_p = models.ForeignKey(
-        P, models.DB_CASCADE, related_name="db_cascade_p_set", null=True
     )
 
     # A OneToOneField is just a ForeignKey unique=True, so we don't duplicate
@@ -143,15 +166,12 @@ def create_a(name):
         "auto_nullable",
         "setvalue",
         "setnull",
-        "db_setnull",
         "setdefault",
         "setdefault_none",
         "cascade",
-        "db_cascade",
         "cascade_nullable",
         "protect",
         "restrict",
-        "db_restrict",
         "donothing",
         "o2o_setnull",
     ):
@@ -159,6 +179,19 @@ def create_a(name):
         setattr(a, name, r)
     a.child = RChild.objects.create()
     a.child_setnull = RChild.objects.create()
+    a.save()
+    return a
+
+
+def create_related_db_option(name):
+    a = RelatedDbOption(name=name)
+    for name in [
+        "db_setnull",
+        "db_cascade",
+        "db_restrict",
+    ]:
+        r = RelatedDbOptionParent.objects.create()
+        setattr(a, name, r)
     a.save()
     return a
 

@@ -87,8 +87,6 @@ class DatabaseOnDelete:
         self.forced_collector = forced_collector
         self.__name__ = name
 
-    # These objects must be callable, as we are calling it in the collect
-    # method of Collector
     __call__ = DO_NOTHING
 
     def on_delete_sql(self, schema_editor):
@@ -124,7 +122,7 @@ class Collector:
         self.using = using
         # A Model or QuerySet object.
         self.origin = origin
-        # Force collecting objects for deletion on the Python level.
+        # Force collecting objects for deletion on the Python-level.
         self.force_collection = force_collection
         # Initially, {model: {instances}}, later values become lists.
         self.data = defaultdict(set)

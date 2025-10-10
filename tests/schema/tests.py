@@ -414,13 +414,12 @@ class SchemaTests(TransactionTestCase):
 
     @skipUnlessDBFeature("can_create_inline_fk")
     def test_inline_fk_db_on_delete(self):
-        # Create some tables.
         with connection.schema_editor() as editor:
             editor.create_model(Author)
             editor.create_model(Book)
             editor.create_model(Note)
         self.assertForeignKeyNotExists(Note, "book_id", "schema_book")
-        # Add a foreign key from one to the other.
+        # Add a foreign key from model to the other.
         with (
             CaptureQueriesContext(connection) as ctx,
             connection.schema_editor() as editor,

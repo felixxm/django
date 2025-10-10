@@ -34,12 +34,9 @@ from .models import (
     RChild,
     RChildChild,
     Referrer,
-    RelatedDb,
     RelatedDbOption,
     RelatedDbOptionGrandParent,
     RelatedDbOptionParent,
-    RelatedDeepDb,
-    RelatedDeeperDb,
     RProxy,
     S,
     SetDefaultDb,
@@ -116,6 +113,8 @@ class OnDeleteTests(TestCase):
 
     @skipUnlessDBFeature("supports_on_delete_db_default")
     def test_db_setdefault_none(self):
+        # Object cannot be created on the module initialization, use hardcoded
+        # PKs instead.
         RelatedDbOptionParent.objects.all().delete()
         r = RelatedDbOptionParent.objects.create(pk=2)
         default_r = RelatedDbOptionParent.objects.create(pk=1)
@@ -427,18 +426,18 @@ class DeletionTests(TestCase):
         self.assertFalse(S.objects.exists())
 
     def test_db_cascade(self):
-        related_db = RelatedDb.objects.create(r=RelatedDbOptionParent.objects.create())
-        RelatedDeepDb.objects.bulk_create(
+        related_db_op = RelatedDbOptionParent.objects.create(
+            p=RelatedDbOptionGrandParent.objects.create()
+        )
+        RelatedDbOption.objects.bulk_create(
             [
-                RelatedDeepDb(related_db=related_db)
+                RelatedDbOption(db_cascade=related_db_op)
                 for _ in range(2 * GET_ITERATOR_CHUNK_SIZE)
             ]
         )
-        RelatedDeeperDb.objects.create(related_deep_db=RelatedDeepDb.objects.first())
-        self.assertNumQueries(1, related_db.delete)
-        self.assertFalse(RelatedDb.objects.exists())
-        self.assertFalse(RelatedDeepDb.objects.exists())
-        self.assertFalse(RelatedDeeperDb.objects.exists())
+        self.assertNumQueries(1, related_db_op.delete)
+        self.assertFalse(RelatedDbOption.objects.exists())
+        self.assertFalse(RelatedDbOptionParent.objects.exists())
 
     def test_instance_update(self):
         deleted = []

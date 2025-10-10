@@ -149,9 +149,6 @@ class GenericForeignKey(FieldCacheMixin, Field):
                         id="contenttypes.E006",
                     )
                 ]
-                raise ValueError(
-                    "The GenericForeignKey  cannot use database-level on_delete option."
-                )
             else:
                 return []
 

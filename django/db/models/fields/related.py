@@ -1106,32 +1106,9 @@ class ForeignKey(ForeignObject):
                             "DB_SET_DEFAULT.",
                             hint="Change the on_delete rule to SET_DEFAULT.",
                             obj=self,
-                            id="fields.E325",
+                            id="fields.E324",
                         ),
                     )
-        if (
-            isinstance(on_delete, DatabaseOnDelete)
-            and hasattr(self.model, "_meta")
-            and (
-                any(  # Generic relation.
-                    hasattr(field, "bulk_related_objects")
-                    for field in self.model._meta.private_fields
-                )
-                or any(  # Generic foreign key.
-                    hasattr(field, "get_content_type")
-                    for field in self.model._meta.private_fields
-                )
-            )
-        ):
-            errors.append(
-                checks.Error(
-                    f"Field specifies unsupported on_delete={on_delete} on model "
-                    "declaring a GenericForeignKey.",
-                    hint="Change the on_delete rule to a non DB_* method.",
-                    obj=self,
-                    id="fields.E324",
-                )
-            )
         elif not isinstance(self.remote_field.model, str):
             # Database and Python variants cannot be mixed in a chain of
             # model references.

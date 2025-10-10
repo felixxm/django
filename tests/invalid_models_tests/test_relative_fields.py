@@ -2306,7 +2306,7 @@ class DatabaseLevelOnDeleteTests(TestCase):
                     f"{connection.display_name} does not support a DB_SET_DEFAULT.",
                     hint="Change the on_delete rule to SET_DEFAULT.",
                     obj=field,
-                    id="fields.E325",
+                    id="fields.E324",
                 )
             ]
         )

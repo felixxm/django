@@ -307,9 +307,7 @@ Related fields
   ``db_default`` value.
 * **fields.E323**: Field specifies database/python-level on_delete variant, but
   referenced model uses python/database-level variant.
-* **fields.E324**: Field specifies unsupported ``on_delete=<on delete option>``
-  on model declaring a ``GenericForeignKey``.
-* **fields.E325**: ``<database>`` does not support ``DB_SET_DEFAULT``.
+* **fields.E324**: ``<database>`` does not support ``DB_SET_DEFAULT``.
 * **fields.E330**: ``ManyToManyField``\s cannot be unique.
 * **fields.E331**: Field specifies a many-to-many relation through model
   ``<model>``, which has not been installed.
@@ -928,6 +926,8 @@ The following checks are performed when a model contains a
 * **contenttypes.E004**: ``<field>`` is not a ``ForeignKey`` to
   ``contenttypes.ContentType``.
 * **contenttypes.E005**: Model names must be at most 100 characters.
+* **contenttypes.E006**: ``<field>`` cannot use the database-level
+  ``on_delete`` variant.
 
 ``postgres``
 ------------
